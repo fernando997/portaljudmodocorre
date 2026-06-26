@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Scale, Loader2, ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -6,14 +6,10 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { getCurrentUser, verifyOtp } from "@/lib/auth.functions";
+import { verifyOtp } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/auth/verify")({
   head: () => ({ meta: [{ title: "Verificar código — Lex.Portal" }] }),
-  beforeLoad: async () => {
-    const user = await getCurrentUser();
-    if (user) throw redirect({ to: "/dashboard" });
-  },
   component: VerifyPage,
 });
 

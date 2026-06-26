@@ -20,6 +20,7 @@ export const requestOtp = createServerFn({ method: "POST" })
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = Date.now() + 5 * 60 * 1000;
     await session.update({
+      userId: undefined,
       pendingPhone: data.phone,
       pendingCode: code,
       pendingExpires: expires,
