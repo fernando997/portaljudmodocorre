@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Scale, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import logoModo from "@/assets/logo_modo.png.asset.json";
 import { useState } from "react";
 import { toast } from "sonner";
 
