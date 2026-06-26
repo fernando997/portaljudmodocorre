@@ -2,12 +2,13 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   FileText,
-  Scale,
   Users,
   Settings,
   LogOut,
   ShieldCheck,
 } from "lucide-react";
+import logoModo from "@/assets/logo_modo.png.asset.json";
+
 import { useServerFn } from "@tanstack/react-start";
 
 import {
@@ -48,22 +49,24 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="px-4 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20">
-            <Scale className="h-5 w-5" />
-          </div>
+        <div className={cn("flex items-center", collapsed ? "justify-center" : "flex-col gap-2")}>
+          <img
+            src={logoModo.url}
+            alt="Modo Corre"
+            className={cn(
+              "w-auto drop-shadow-[0_4px_18px_rgba(201,168,76,0.25)]",
+              collapsed ? "h-9" : "h-20",
+            )}
+          />
           {!collapsed && (
-            <div className="flex flex-col leading-tight">
-              <span className="font-display text-lg font-bold tracking-tight text-foreground">
-                Lex<span className="text-primary">.</span>Portal
-              </span>
-              <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Advocacia
-              </span>
+            <div className="text-center font-display text-[10px] font-bold uppercase tracking-[0.22em] leading-tight text-foreground">
+              Portal Judiciário
+              <div className="mt-1 text-primary text-[9px] tracking-[0.3em]">Modo Corre</div>
             </div>
           )}
         </div>
       </SidebarHeader>
+
 
       <SidebarContent className="px-3">
         <SidebarGroup>
