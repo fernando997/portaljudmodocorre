@@ -26,7 +26,14 @@ function VerifyPage() {
   const submit = async (value: string) => {
     setLoading(true);
     try {
-      await verify({ data: { code: value } });
+      const ticket = window.sessionStorage.getItem("portal_juridico_otp_ticket") ?? undefined;
+      const result = await verify({ data: { code: value, ticket } });
+      if (!result.ok) {
+        toast.error(result.error);
+        setCode("");
+        return;
+      }
+      window.sessionStorage.removeItem("portal_juridico_otp_ticket");
       toast.success("Bem-vindo de volta!");
       navigate({ to: "/dashboard" });
     } catch (err) {

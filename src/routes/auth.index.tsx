@@ -43,6 +43,7 @@ function AuthPage() {
         description: `Use o código de teste: ${res.devCode}`,
         duration: 8000,
       });
+      window.sessionStorage.setItem("portal_juridico_otp_ticket", res.ticket);
       navigate({ to: "/auth/verify" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao enviar código");
