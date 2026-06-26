@@ -26,7 +26,7 @@ import { signOut } from "@/lib/auth.functions";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/home", icon: LayoutDashboard },
   { title: "Contratos", url: "/contratos", icon: FileText },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Compliance", url: "/compliance", icon: ShieldCheck },

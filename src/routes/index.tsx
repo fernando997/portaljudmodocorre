@@ -4,6 +4,6 @@ import { getCurrentUser } from "@/lib/auth.functions";
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
     const user = await getCurrentUser();
-    throw redirect({ to: user ? "/dashboard" : "/auth" });
+    throw redirect({ to: user ? "/home" : "/auth" });
   },
 });

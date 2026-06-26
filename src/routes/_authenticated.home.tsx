@@ -34,8 +34,8 @@ const contractsQuery = queryOptions({
   queryFn: () => getContracts(),
 });
 
-export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — Lex.Portal" }] }),
+export const Route = createFileRoute("/_authenticated/home")({
+  head: () => ({ meta: [{ title: "Home — Portal Judiciário" }] }),
   loader: ({ context }) => context.queryClient.ensureQueryData(contractsQuery),
   component: Dashboard,
 });

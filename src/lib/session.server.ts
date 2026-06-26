@@ -12,7 +12,7 @@ export function getAppSession() {
   return useSession<SessionData>({
     password: process.env.SESSION_SECRET!,
     name: "portal_juridico_session",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 30,
     cookie: {
       httpOnly: true,
       secure: true,
