@@ -13,7 +13,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated.dashboard'
+import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated.home'
 import { Route as AuthenticatedContratosRouteImport } from './routes/_authenticated.contratos'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
@@ -35,9 +35,9 @@ const AuthVerifyRoute = AuthVerifyRouteImport.update({
   path: '/auth/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedContratosRoute = AuthenticatedContratosRouteImport.update({
@@ -49,14 +49,14 @@ const AuthenticatedContratosRoute = AuthenticatedContratosRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/contratos': typeof AuthenticatedContratosRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/home': typeof AuthenticatedHomeRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth/': typeof AuthIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/contratos': typeof AuthenticatedContratosRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/home': typeof AuthenticatedHomeRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth': typeof AuthIndexRoute
 }
@@ -65,21 +65,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/_authenticated/contratos': typeof AuthenticatedContratosRoute
-  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth/': typeof AuthIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/contratos' | '/dashboard' | '/auth/verify' | '/auth/'
+  fullPaths: '/' | '/contratos' | '/home' | '/auth/verify' | '/auth/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/contratos' | '/dashboard' | '/auth/verify' | '/auth'
+  to: '/' | '/contratos' | '/home' | '/auth/verify' | '/auth'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/_authenticated/contratos'
-    | '/_authenticated/dashboard'
+    | '/_authenticated/home'
     | '/auth/verify'
     | '/auth/'
   fileRoutesById: FileRoutesById
@@ -121,11 +121,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+    '/_authenticated/home': {
+      id: '/_authenticated/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof AuthenticatedHomeRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/contratos': {
@@ -140,12 +140,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteChildren {
   AuthenticatedContratosRoute: typeof AuthenticatedContratosRoute
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedContratosRoute: AuthenticatedContratosRoute,
-  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedHomeRoute: AuthenticatedHomeRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
