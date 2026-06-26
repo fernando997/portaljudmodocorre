@@ -86,6 +86,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Lex.Portal — Portal Jurídico" },
+      { name: "twitter:description", content: "Plataforma exclusiva para advogados acompanharem contratos, clientes e comissões." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0e878639-046d-4275-b121-d07ce3ad8e54/id-preview-52e3773e--f46bc96d-dab9-45bc-9cbf-819c703f4402.lovable.app-1782493985685.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0e878639-046d-4275-b121-d07ce3ad8e54/id-preview-52e3773e--f46bc96d-dab9-45bc-9cbf-819c703f4402.lovable.app-1782493985685.png" },
     ],
     links: [
       {
