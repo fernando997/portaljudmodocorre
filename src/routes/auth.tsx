@@ -57,19 +57,16 @@ function AuthPage() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--gold-soft)_0%,_transparent_50%)] opacity-[0.05]" />
 
       <div className="relative grid min-h-screen lg:grid-cols-2">
-        <div className="hidden flex-col justify-between border-r border-border/40 p-12 lg:flex">
-          <div className="flex items-center gap-4">
-            <img src={logoModo.url} alt="Modo Corre" className="h-14 w-auto" />
-            <div className="font-display text-base font-bold uppercase tracking-[0.2em] leading-tight">
-              Portal<br />Judiciário
-              <div className="mt-1 text-primary text-xs tracking-[0.3em]">Modo Corre</div>
+        <div className="hidden flex-col items-center justify-center gap-12 border-r border-border/40 p-12 lg:flex">
+          <div className="flex flex-col items-center gap-5">
+            <img src={logoModo.url} alt="Modo Corre" className="h-24 w-auto" />
+            <div className="text-center font-display text-sm font-bold uppercase tracking-[0.25em] leading-tight text-foreground">
+              Portal Judiciário
+              <div className="mt-2 text-primary text-xs tracking-[0.35em]">Modo Corre</div>
             </div>
           </div>
 
-          <div className="space-y-6">
-            <h1 className="font-display text-5xl font-bold leading-[1.05] text-foreground">
-              Acompanhe seus contratos com a precisão de uma sentença.
-            </h1>
+          <div className="space-y-6 text-center">
             <p className="max-w-md text-base leading-relaxed text-muted-foreground">
               Plataforma dedicada para advogados gerirem comissões, contratos
               e clientes em um só lugar — com a segurança que a sua atuação exige.
@@ -79,11 +76,12 @@ function AuthPage() {
               <span className="text-xs uppercase tracking-[0.3em] text-primary">
                 Sigilo · Integridade · Velocidade
               </span>
+              <div className="h-px flex-1 bg-gradient-to-l from-primary/60 to-transparent" />
             </div>
           </div>
 
           <div className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Lex.Portal — Todos os direitos reservados.
+            © {new Date().getFullYear()} Portal Judiciário Modo Corre — Todos os direitos reservados.
           </div>
         </div>
 
