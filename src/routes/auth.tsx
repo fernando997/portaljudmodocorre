@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Scale, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import logoModo from "@/assets/logo_modo.png.asset.json";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -57,12 +58,11 @@ function AuthPage() {
 
       <div className="relative grid min-h-screen lg:grid-cols-2">
         <div className="hidden flex-col justify-between border-r border-border/40 p-12 lg:flex">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-lg shadow-primary/30">
-              <Scale className="h-5 w-5" />
-            </div>
-            <div className="font-display text-xl font-bold">
-              Lex<span className="text-primary">.</span>Portal
+          <div className="flex items-center gap-4">
+            <img src={logoModo.url} alt="Modo Corre" className="h-14 w-auto" />
+            <div className="font-display text-base font-bold uppercase tracking-[0.2em] leading-tight">
+              Portal<br />Judiciário
+              <div className="mt-1 text-primary text-xs tracking-[0.3em]">Modo Corre</div>
             </div>
           </div>
 
@@ -91,11 +91,9 @@ function AuthPage() {
           <div className="w-full max-w-md">
             <div className="mb-10 lg:hidden">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground">
-                  <Scale className="h-5 w-5" />
-                </div>
-                <span className="font-display text-lg font-bold">
-                  Lex<span className="text-primary">.</span>Portal
+                <img src={logoModo.url} alt="Modo Corre" className="h-10 w-auto" />
+                <span className="font-display text-sm font-bold uppercase tracking-[0.2em]">
+                  Portal Judiciário <span className="text-primary">Modo Corre</span>
                 </span>
               </div>
             </div>
