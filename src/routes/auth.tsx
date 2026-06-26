@@ -91,11 +91,9 @@ function AuthPage() {
           <div className="w-full max-w-md">
             <div className="mb-10 lg:hidden">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent text-primary-foreground">
-                  <Scale className="h-5 w-5" />
-                </div>
-                <span className="font-display text-lg font-bold">
-                  Lex<span className="text-primary">.</span>Portal
+                <img src={logoModo.url} alt="Modo Corre" className="h-10 w-auto" />
+                <span className="font-display text-sm font-bold uppercase tracking-[0.2em]">
+                  Portal Judiciário <span className="text-primary">Modo Corre</span>
                 </span>
               </div>
             </div>
