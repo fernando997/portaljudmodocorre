@@ -86,12 +86,13 @@ function AuthPage() {
       <div className="relative grid min-h-screen lg:grid-cols-2">
         <div className="hidden flex-col items-center justify-center gap-12 border-r border-border/30 p-12 lg:flex">
           <div className="flex flex-col items-center gap-5">
-            <img src={logoModo.url} alt="Modo Corre" className="h-24 w-auto drop-shadow-[0_8px_24px_rgba(201,168,76,0.25)]" />
-            <div className="text-center font-display text-sm font-bold uppercase tracking-[0.25em] leading-tight text-foreground">
+            <img src={logoModo.url} alt="Modo Corre" className="h-56 w-auto drop-shadow-[0_8px_32px_rgba(201,168,76,0.35)]" />
+            <div className="text-center font-display text-base font-bold uppercase tracking-[0.25em] leading-tight text-foreground">
               Portal Judiciário
-              <div className="mt-2 text-primary text-xs tracking-[0.35em]">Modo Corre</div>
+              <div className="mt-2 text-primary text-sm tracking-[0.35em]">Modo Corre</div>
             </div>
           </div>
+
 
           <div className="space-y-6 text-center">
             <p className="max-w-md text-base leading-relaxed text-muted-foreground">
@@ -116,7 +117,7 @@ function AuthPage() {
           <div className="w-full max-w-md rounded-3xl border border-border/40 bg-card/70 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-10">
             <div className="mb-8 lg:hidden">
               <div className="flex flex-col items-center gap-3 text-center">
-                <img src={logoModo.url} alt="Modo Corre" className="h-16 w-auto" />
+                <img src={logoModo.url} alt="Modo Corre" className="h-28 w-auto" />
                 <div className="font-display text-sm font-bold uppercase tracking-[0.25em] leading-tight">
                   Portal Judiciário
                   <div className="mt-1 text-primary text-xs tracking-[0.35em]">Modo Corre</div>
