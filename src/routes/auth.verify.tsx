@@ -31,7 +31,7 @@ function VerifyPage() {
       }
       window.sessionStorage.removeItem("portal_juridico_otp_ticket");
       toast.success("Bem-vindo de volta!");
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/home" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Código inválido");
       setCode("");
