@@ -10,10 +10,6 @@ import { getCurrentUser, verifyOtp } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/auth/verify")({
   head: () => ({ meta: [{ title: "Verificar código — Lex.Portal" }] }),
-  beforeLoad: async () => {
-    const user = await getCurrentUser();
-    if (user) throw redirect({ to: "/dashboard" });
-  },
   component: VerifyPage,
 });
 
