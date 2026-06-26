@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCurrentUser, requestOtp } from "@/lib/auth.functions";
 
-export const Route = createFileRoute("/auth")({
+export const Route = createFileRoute("/auth/")({
   head: () => ({
     meta: [{ title: "Entrar — Lex.Portal" }, { name: "description", content: "Acesso seguro ao portal jurídico." }],
   }),
