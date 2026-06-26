@@ -88,11 +88,12 @@ function AuthPage() {
         <div className="flex items-center justify-center p-6 sm:p-10">
           <div className="w-full max-w-md">
             <div className="mb-10 lg:hidden">
-              <div className="flex items-center gap-3">
-                <img src={logoModo.url} alt="Modo Corre" className="h-10 w-auto" />
-                <span className="font-display text-sm font-bold uppercase tracking-[0.2em]">
-                  Portal Judiciário <span className="text-primary">Modo Corre</span>
-                </span>
+              <div className="flex flex-col items-center gap-3 text-center">
+                <img src={logoModo.url} alt="Modo Corre" className="h-16 w-auto" />
+                <div className="font-display text-sm font-bold uppercase tracking-[0.25em] leading-tight">
+                  Portal Judiciário
+                  <div className="mt-1 text-primary text-xs tracking-[0.35em]">Modo Corre</div>
+                </div>
               </div>
             </div>
 
