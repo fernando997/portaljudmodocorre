@@ -135,11 +135,6 @@ function ContratosPage() {
       .map((c) => c.contratoId),
   );
 
-  if (typeof window !== "undefined" && (data as any).debugRaw) {
-    console.log("[BUBBLE RAW]", (data as any).debugRaw);
-    console.log("[vitrine] total:", data.contracts.length, "| apiEnv:", (data as any).apiEnv);
-  }
-
   const filtered = data.contracts
     .filter((c) => !acceptedIds.has(c.id))
     .filter((c) =>

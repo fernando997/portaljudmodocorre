@@ -115,7 +115,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
   let seenFechamentos = new Set<string>();
   let seenCasos = new Set<string>();
   let source: "bubble" | "mock" = "mock";
-  let firstPageDebug: string = "";
 
   if (baseUrl && platformToken) {
     try {
@@ -154,11 +153,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
         if (!res.ok) throw new Error(`Bubble respondeu ${res.status}`);
         const json = JSON.parse(rawText);
         const data = json.response ?? json;
-
-        if (offset === 0) {
-          firstPageDebug = JSON.stringify({ topKeys: Object.keys(json), dataKeys: Object.keys(data), preview: rawText.slice(0, 600) });
-          debugLog("get_contratos:raw", JSON.parse(firstPageDebug));
-        }
 
         if (offset === 0 && typeof data.total === "number") {
           totalFromBubble = data.total;
@@ -331,6 +325,5 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
     advogadoId: session.data.advogadoId ?? "",
     comissao: session.data.comissao ?? 0,
     apiEnv: baseUrl?.includes("version-test") ? "DEV" : baseUrl ? "PROD" : "NONE",
-    debugRaw: firstPageDebug,
   };
 });
