@@ -135,7 +135,11 @@ function ContratosPage() {
       .map((c) => c.contratoId),
   );
 
-  // Debug: log distinct statusContrato values so we can see what Bubble returns
+  if (typeof window !== "undefined" && (data as any).debugRaw) {
+    console.log("[BUBBLE RAW]", (data as any).debugRaw);
+    console.log("[vitrine] total:", data.contracts.length, "| apiEnv:", (data as any).apiEnv);
+  }
+
   const filtered = data.contracts
     .filter((c) => !acceptedIds.has(c.id))
     .filter((c) =>
