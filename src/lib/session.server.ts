@@ -16,7 +16,7 @@ export type SessionData = {
 
 export function getAppSession() {
   return useSession<SessionData>({
-    password: process.env.SESSION_SECRET!,
+    password: process.env.SESSION_SECRET ?? (() => { throw new Error("SESSION_SECRET não configurada nas variáveis de ambiente."); })(),
     name: "portal_juridico_session",
     maxAge: 60 * 60 * 24 * 30,
     cookie: {
