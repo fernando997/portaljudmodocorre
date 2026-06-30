@@ -140,6 +140,7 @@ function ContratosPage() {
     const distinct = [...new Set(data.contracts.map((c) => c.statusContrato))];
     console.log("[vitrine] statusContrato values from Bubble:", distinct);
     console.log("[vitrine] total contracts:", data.contracts.length, "| source:", data.source, "| apiEnv:", (data as any).apiEnv);
+    if ((data as any).debugRaw) console.log("[vitrine] RAW BUBBLE RESPONSE:", (data as any).debugRaw);
   }
 
   const filtered = data.contracts

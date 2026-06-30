@@ -115,6 +115,7 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
   let seenFechamentos = new Set<string>();
   let seenCasos = new Set<string>();
   let source: "bubble" | "mock" = "mock";
+  let firstPageRaw = "";
 
   if (baseUrl && platformToken) {
     try {
@@ -150,9 +151,18 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
           bodyPreview: rawText.slice(0, 500),
         });
 
-        if (!res.ok) throw new Error(`Bubble respondeu ${res.status}`);
+        if (!res.ok) throw new Error(`Bubble respondeu ${res.status}: ${rawText.slice(0, 200)}`);
+        if (offset === 0) firstPageRaw = rawText.slice(0, 1000);
         const json = JSON.parse(rawText);
         const data = json.response ?? json;
+
+        if (offset === 0) {
+          debugLog("get_contratos:raw-keys", {
+            topLevelKeys: Object.keys(json),
+            responseKeys: json.response ? Object.keys(json.response) : "sem response wrapper",
+            rawPreview: rawText.slice(0, 800),
+          });
+        }
 
         if (offset === 0 && typeof data.total === "number") {
           totalFromBubble = data.total;
@@ -325,5 +335,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
     advogadoId: session.data.advogadoId ?? "",
     comissao: session.data.comissao ?? 0,
     apiEnv: baseUrl?.includes("version-test") ? "DEV" : baseUrl ? "PROD" : "NONE",
+    debugRaw: firstPageRaw,
   };
 });
