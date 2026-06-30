@@ -9,7 +9,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { verifyOtp } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/auth/verify")({
-  head: () => ({ meta: [{ title: "Verificar código — Lex.Portal" }] }),
+  head: () => ({ meta: [{ title: "Verificar código — PORTAL JUD · Modo Corre" }] }),
   component: VerifyPage,
 });
 
@@ -22,14 +22,12 @@ function VerifyPage() {
   const submit = async (value: string) => {
     setLoading(true);
     try {
-      const ticket = window.sessionStorage.getItem("portal_juridico_otp_ticket") ?? undefined;
-      const result = await verify({ data: { code: value, ticket } });
+      const result = await verify({ data: { code: value } });
       if (!result.ok) {
         toast.error(result.error);
         setCode("");
         return;
       }
-      window.sessionStorage.removeItem("portal_juridico_otp_ticket");
       toast.success("Bem-vindo de volta!");
       navigate({ to: "/home" });
     } catch (err) {

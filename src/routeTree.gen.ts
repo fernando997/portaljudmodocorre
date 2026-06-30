@@ -14,7 +14,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated.home'
-import { Route as AuthenticatedContratosRouteImport } from './routes/_authenticated.contratos'
+import { Route as AuthenticatedFinalizadosRouteImport } from './routes/_authenticated.finalizados'
+import { Route as AuthenticatedAbandonadosRouteImport } from './routes/_authenticated.abandonados'
+import { Route as AuthenticatedContratosIndexRouteImport } from './routes/_authenticated.contratos.index'
+import { Route as AuthenticatedContratosIdRouteImport } from './routes/_authenticated.contratos.$id'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -40,48 +43,95 @@ const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
   path: '/home',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedContratosRoute = AuthenticatedContratosRouteImport.update({
-  id: '/contratos',
-  path: '/contratos',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
+const AuthenticatedFinalizadosRoute =
+  AuthenticatedFinalizadosRouteImport.update({
+    id: '/finalizados',
+    path: '/finalizados',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAbandonadosRoute =
+  AuthenticatedAbandonadosRouteImport.update({
+    id: '/abandonados',
+    path: '/abandonados',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedContratosIndexRoute =
+  AuthenticatedContratosIndexRouteImport.update({
+    id: '/contratos/',
+    path: '/contratos/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedContratosIdRoute =
+  AuthenticatedContratosIdRouteImport.update({
+    id: '/contratos/$id',
+    path: '/contratos/$id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/contratos': typeof AuthenticatedContratosRoute
+  '/abandonados': typeof AuthenticatedAbandonadosRoute
+  '/finalizados': typeof AuthenticatedFinalizadosRoute
   '/home': typeof AuthenticatedHomeRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth/': typeof AuthIndexRoute
+  '/contratos/$id': typeof AuthenticatedContratosIdRoute
+  '/contratos/': typeof AuthenticatedContratosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/contratos': typeof AuthenticatedContratosRoute
+  '/abandonados': typeof AuthenticatedAbandonadosRoute
+  '/finalizados': typeof AuthenticatedFinalizadosRoute
   '/home': typeof AuthenticatedHomeRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth': typeof AuthIndexRoute
+  '/contratos/$id': typeof AuthenticatedContratosIdRoute
+  '/contratos': typeof AuthenticatedContratosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
-  '/_authenticated/contratos': typeof AuthenticatedContratosRoute
+  '/_authenticated/abandonados': typeof AuthenticatedAbandonadosRoute
+  '/_authenticated/finalizados': typeof AuthenticatedFinalizadosRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth/': typeof AuthIndexRoute
+  '/_authenticated/contratos/$id': typeof AuthenticatedContratosIdRoute
+  '/_authenticated/contratos/': typeof AuthenticatedContratosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/contratos' | '/home' | '/auth/verify' | '/auth/'
+  fullPaths:
+    | '/'
+    | '/abandonados'
+    | '/finalizados'
+    | '/home'
+    | '/auth/verify'
+    | '/auth/'
+    | '/contratos/$id'
+    | '/contratos/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/contratos' | '/home' | '/auth/verify' | '/auth'
+  to:
+    | '/'
+    | '/abandonados'
+    | '/finalizados'
+    | '/home'
+    | '/auth/verify'
+    | '/auth'
+    | '/contratos/$id'
+    | '/contratos'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/_authenticated/contratos'
+    | '/_authenticated/abandonados'
+    | '/_authenticated/finalizados'
     | '/_authenticated/home'
     | '/auth/verify'
     | '/auth/'
+    | '/_authenticated/contratos/$id'
+    | '/_authenticated/contratos/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -128,24 +178,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHomeRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/contratos': {
-      id: '/_authenticated/contratos'
+    '/_authenticated/finalizados': {
+      id: '/_authenticated/finalizados'
+      path: '/finalizados'
+      fullPath: '/finalizados'
+      preLoaderRoute: typeof AuthenticatedFinalizadosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/abandonados': {
+      id: '/_authenticated/abandonados'
+      path: '/abandonados'
+      fullPath: '/abandonados'
+      preLoaderRoute: typeof AuthenticatedAbandonadosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/contratos/': {
+      id: '/_authenticated/contratos/'
       path: '/contratos'
-      fullPath: '/contratos'
-      preLoaderRoute: typeof AuthenticatedContratosRouteImport
+      fullPath: '/contratos/'
+      preLoaderRoute: typeof AuthenticatedContratosIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/contratos/$id': {
+      id: '/_authenticated/contratos/$id'
+      path: '/contratos/$id'
+      fullPath: '/contratos/$id'
+      preLoaderRoute: typeof AuthenticatedContratosIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
 }
 
 interface AuthenticatedRouteChildren {
-  AuthenticatedContratosRoute: typeof AuthenticatedContratosRoute
+  AuthenticatedAbandonadosRoute: typeof AuthenticatedAbandonadosRoute
+  AuthenticatedFinalizadosRoute: typeof AuthenticatedFinalizadosRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
+  AuthenticatedContratosIdRoute: typeof AuthenticatedContratosIdRoute
+  AuthenticatedContratosIndexRoute: typeof AuthenticatedContratosIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
-  AuthenticatedContratosRoute: AuthenticatedContratosRoute,
+  AuthenticatedAbandonadosRoute: AuthenticatedAbandonadosRoute,
+  AuthenticatedFinalizadosRoute: AuthenticatedFinalizadosRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
+  AuthenticatedContratosIdRoute: AuthenticatedContratosIdRoute,
+  AuthenticatedContratosIndexRoute: AuthenticatedContratosIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -161,3 +238,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

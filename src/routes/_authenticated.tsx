@@ -21,7 +21,14 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthedLayout() {
   const { user } = Route.useRouteContext();
-  const initials = user.phone.slice(-2);
+  const initials = user.nome
+    ? user.nome
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : user.phone.slice(-2);
 
   return (
     <SidebarProvider>
@@ -45,7 +52,7 @@ function AuthedLayout() {
               <div className="flex items-center gap-3">
                 <div className="hidden text-right sm:block">
                   <div className="text-sm font-medium text-foreground">
-                    Dr(a). Advogado
+                    {user.nome ? `Dr(a). ${user.nome}` : "Dr(a). Advogado"}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     +{user.phone}

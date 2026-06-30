@@ -3,9 +3,15 @@ import { useSession } from "@tanstack/react-start/server";
 export type SessionData = {
   userId?: string;
   phone?: string;
+  nome?: string;
+  advogadoId?: string;
+  comissao?: number;
   pendingPhone?: string;
   pendingCode?: string;
   pendingExpires?: number;
+  pendingNome?: string;
+  pendingAdvogadoId?: string;
+  pendingComissao?: number;
 };
 
 export function getAppSession() {
@@ -15,7 +21,7 @@ export function getAppSession() {
     maxAge: 60 * 60 * 24 * 30,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
     },

@@ -2,14 +2,14 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   FileText,
-  Users,
-  Settings,
+  CheckCircle2,
+  ShieldAlert,
   LogOut,
-  ShieldCheck,
 } from "lucide-react";
-import logoModo from "@/assets/logo_modo.png.asset.json";
+import logoModo from "@/assets/logo_modo.png";
 
 import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   Sidebar,
@@ -28,10 +28,9 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { title: "Dashboard", url: "/home", icon: LayoutDashboard },
-  { title: "Contratos", url: "/contratos", icon: FileText },
-  { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Compliance", url: "/compliance", icon: ShieldCheck },
-  { title: "Configurações", url: "/configuracoes", icon: Settings },
+  { title: "Vitrine de casos", url: "/contratos", icon: FileText },
+  { title: "Casos finalizados", url: "/finalizados", icon: CheckCircle2 },
+  { title: "Casos abandonados", url: "/abandonados", icon: ShieldAlert },
 ];
 
 export function AppSidebar() {
@@ -40,9 +39,11 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const logout = useServerFn(signOut);
+  const queryClient = useQueryClient();
 
   const handleLogout = async () => {
     await logout();
+    queryClient.clear();
     navigate({ to: "/auth" });
   };
 
@@ -51,7 +52,7 @@ export function AppSidebar() {
       <SidebarHeader className="px-4 py-5">
         <div className={cn("flex items-center", collapsed ? "justify-center" : "flex-col gap-2")}>
           <img
-            src={logoModo.url}
+            src={logoModo}
             alt="Modo Corre"
             className={cn(
               "w-auto drop-shadow-[0_4px_18px_rgba(201,168,76,0.25)]",
@@ -60,7 +61,7 @@ export function AppSidebar() {
           />
           {!collapsed && (
             <div className="text-center font-display text-[10px] font-bold uppercase tracking-[0.22em] leading-tight text-foreground">
-              Portal Judiciário
+              PORTAL JUD
               <div className="mt-1 text-primary text-[9px] tracking-[0.3em]">Modo Corre</div>
             </div>
           )}
@@ -82,7 +83,7 @@ export function AppSidebar() {
                       className={cn(
                         "h-11 rounded-xl px-3 text-sm font-medium transition-all",
                         active
-                          ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md shadow-primary/25 hover:from-primary hover:to-accent"
+                          ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md shadow-primary/25 hover:from-primary hover:to-accent data-[active=true]:text-primary-foreground data-[active=true]:bg-transparent hover:text-primary-foreground"
                           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
                       )}
                     >

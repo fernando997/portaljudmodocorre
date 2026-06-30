@@ -1,8 +1,8 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2 } from "lucide-react";
-import logoModo from "@/assets/logo_modo.png.asset.json";
-import lawBg from "@/assets/law-bg.webp.asset.json";
+import logoModo from "@/assets/logo_modo.png";
+import lawBg from "@/assets/lawBg.webp";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -14,7 +14,7 @@ import { getCurrentUser, requestOtp } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/auth/")({
   head: () => ({
-    meta: [{ title: "Entrar — Portal Judiciário Modo Corre" }, { name: "description", content: "Acesso seguro ao portal jurídico." }],
+    meta: [{ title: "Entrar — PORTAL JUD Modo Corre" }, { name: "description", content: "Acesso seguro ao portal jurídico." }],
   }),
   beforeLoad: async () => {
     const user = await getCurrentUser();
@@ -51,18 +51,17 @@ function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await sendOtp({ data: { phone } });
+      await sendOtp({ data: { phone } });
       window.localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0");
       if (remember) {
         window.localStorage.setItem(REMEMBER_PHONE_KEY, phone.replace(/\D/g, ""));
       } else {
         window.localStorage.removeItem(REMEMBER_PHONE_KEY);
       }
-      toast.success("Código enviado", {
-        description: `Use o código de teste: ${res.devCode}`,
-        duration: 8000,
+      toast.success("Código enviado pelo WhatsApp!", {
+        description: "Verifique suas mensagens no WhatsApp.",
+        duration: 5000,
       });
-      window.sessionStorage.setItem("portal_juridico_otp_ticket", res.ticket);
       navigate({ to: "/auth/verify" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha ao enviar código");
@@ -76,7 +75,7 @@ function AuthPage() {
       {/* Background image with overlays */}
       <div
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${lawBg.url})` }}
+        style={{ backgroundImage: `url(${lawBg})` }}
       />
       <div className="absolute inset-0 bg-background/85 backdrop-blur-[2px]" />
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background/70 to-background/95" />
@@ -86,9 +85,9 @@ function AuthPage() {
       <div className="relative grid min-h-screen lg:grid-cols-2">
         <div className="hidden flex-col items-center justify-center gap-12 border-r border-border/30 p-12 lg:flex">
           <div className="flex flex-col items-center gap-5">
-            <img src={logoModo.url} alt="Modo Corre" className="h-56 w-auto drop-shadow-[0_8px_32px_rgba(201,168,76,0.35)]" />
+            <img src={logoModo} alt="Modo Corre" className="h-44 w-auto drop-shadow-[0_8px_32px_rgba(201,168,76,0.35)]" />
             <div className="text-center font-display text-base font-bold uppercase tracking-[0.25em] leading-tight text-foreground">
-              Portal Judiciário
+              PORTAL JUD
               <div className="mt-2 text-primary text-sm tracking-[0.35em]">Modo Corre</div>
             </div>
           </div>
@@ -109,7 +108,7 @@ function AuthPage() {
           </div>
 
           <div className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Portal Judiciário Modo Corre — Todos os direitos reservados.
+            © {new Date().getFullYear()} PORTAL JUD Modo Corre — Todos os direitos reservados.
           </div>
         </div>
 
@@ -117,9 +116,9 @@ function AuthPage() {
           <div className="w-full max-w-md rounded-3xl border border-border/40 bg-card/70 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-10">
             <div className="mb-8 lg:hidden">
               <div className="flex flex-col items-center gap-3 text-center">
-                <img src={logoModo.url} alt="Modo Corre" className="h-28 w-auto" />
+                <img src={logoModo} alt="Modo Corre" className="h-22 w-auto" />
                 <div className="font-display text-sm font-bold uppercase tracking-[0.25em] leading-tight">
-                  Portal Judiciário
+                  PORTAL JUD
                   <div className="mt-1 text-primary text-xs tracking-[0.35em]">Modo Corre</div>
                 </div>
               </div>
