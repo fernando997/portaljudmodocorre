@@ -136,13 +136,6 @@ function ContratosPage() {
   );
 
   // Debug: log distinct statusContrato values so we can see what Bubble returns
-  if (typeof window !== "undefined") {
-    const distinct = [...new Set(data.contracts.map((c) => c.statusContrato))];
-    console.log("[vitrine] statusContrato values from Bubble:", distinct);
-    console.log("[vitrine] total contracts:", data.contracts.length, "| source:", data.source, "| apiEnv:", (data as any).apiEnv);
-    if ((data as any).debugRaw) console.log("[vitrine] RAW BUBBLE RESPONSE:", (data as any).debugRaw);
-  }
-
   const filtered = data.contracts
     .filter((c) => !acceptedIds.has(c.id))
     .filter((c) =>
