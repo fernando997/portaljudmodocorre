@@ -15,7 +15,7 @@ export async function getAdvogadoId(): Promise<string> {
 
   if (session.data.advogadoId) return session.data.advogadoId;
 
-  const baseUrl = process.env.VITE_BUBBLE_BASE_URL_PRODUCTION;
+  const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
   const platformToken = process.env.VITE_BUBBLE_PLATFORM_TOKEN;
   const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
   if (!baseUrl || !platformToken) throw new Error("Faça login novamente.");
@@ -50,8 +50,8 @@ export const aceitarCaso = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }) => {
     const advogadoId = await getAdvogadoId();
-    const baseUrl = process.env.VITE_BUBBLE_BASE_URL_PRODUCTION;
-    if (!baseUrl) throw new Error("VITE_BUBBLE_BASE_URL_PRODUCTION não configurada.");
+    const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
+    if (!baseUrl) throw new Error("VITE_BUBBLE_BASE_URL não configurada.");
     const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
 
     const { debugLog } = await import("./debug.server");
@@ -87,8 +87,8 @@ export const abandonarCaso = createServerFn({ method: "POST" })
     const session = await getAppSession();
     if (!session.data.userId) throw new Error("Não autenticado");
 
-    const baseUrl = process.env.VITE_BUBBLE_BASE_URL_PRODUCTION;
-    if (!baseUrl) throw new Error("VITE_BUBBLE_BASE_URL_PRODUCTION não configurada.");
+    const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
+    if (!baseUrl) throw new Error("VITE_BUBBLE_BASE_URL não configurada.");
     const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
 
     const { debugLog } = await import("./debug.server");
@@ -147,8 +147,8 @@ export const finalizarCaso = createServerFn({ method: "POST" })
     const session = await getAppSession();
     if (!session.data.userId) throw new Error("Não autenticado");
 
-    const baseUrl = process.env.VITE_BUBBLE_BASE_URL_PRODUCTION;
-    if (!baseUrl) throw new Error("VITE_BUBBLE_BASE_URL_PRODUCTION não configurada.");
+    const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
+    if (!baseUrl) throw new Error("VITE_BUBBLE_BASE_URL não configurada.");
     const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
 
     const { debugLog } = await import("./debug.server");
@@ -190,7 +190,7 @@ export const getCasos = createServerFn({ method: "GET" }).handler(async () => {
   const session = await getAppSession();
   if (!session.data.userId) throw new Error("Não autenticado");
 
-  const baseUrl = process.env.VITE_BUBBLE_BASE_URL_PRODUCTION;
+  const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
   const platformToken = process.env.VITE_BUBBLE_PLATFORM_TOKEN;
   const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
 

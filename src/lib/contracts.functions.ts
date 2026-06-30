@@ -103,7 +103,7 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
   const session = await getAppSession();
   if (!session.data.userId) throw new Error("Não autenticado");
 
-  const baseUrl = process.env.VITE_BUBBLE_BASE_URL_PRODUCTION;
+  const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
   const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
   const platformToken = process.env.VITE_BUBBLE_PLATFORM_TOKEN;
 

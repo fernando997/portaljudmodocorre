@@ -17,7 +17,7 @@ export const requestOtp = createServerFn({ method: "POST" })
     const { debugLog } = await import("./debug.server");
     const session = await getAppSession();
 
-    const baseUrl = process.env.VITE_BUBBLE_BASE_URL_PRODUCTION;
+    const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
     const platformToken = process.env.VITE_BUBBLE_PLATFORM_TOKEN;
     const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
 
@@ -114,7 +114,7 @@ export const verifyOtp = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Código incorreto." };
     }
 
-    const baseUrl = process.env.VITE_BUBBLE_BASE_URL_PRODUCTION;
+    const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
     const platformToken = process.env.VITE_BUBBLE_PLATFORM_TOKEN;
     const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
 
