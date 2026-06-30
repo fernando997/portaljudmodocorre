@@ -324,5 +324,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
     chartMonths: months,
     advogadoId: session.data.advogadoId ?? "",
     comissao: session.data.comissao ?? 0,
+    apiEnv: baseUrl?.includes("version-test") ? "DEV" : baseUrl ? "PROD" : "NONE",
   };
 });

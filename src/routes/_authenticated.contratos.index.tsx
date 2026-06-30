@@ -139,7 +139,7 @@ function ContratosPage() {
   if (typeof window !== "undefined") {
     const distinct = [...new Set(data.contracts.map((c) => c.statusContrato))];
     console.log("[vitrine] statusContrato values from Bubble:", distinct);
-    console.log("[vitrine] total contracts:", data.contracts.length, "| source:", data.source);
+    console.log("[vitrine] total contracts:", data.contracts.length, "| source:", data.source, "| apiEnv:", (data as any).apiEnv);
   }
 
   const filtered = data.contracts
