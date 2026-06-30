@@ -135,9 +135,20 @@ function ContratosPage() {
       .map((c) => c.contratoId),
   );
 
+  // Debug: log distinct statusContrato values so we can see what Bubble returns
+  if (typeof window !== "undefined") {
+    const distinct = [...new Set(data.contracts.map((c) => c.statusContrato))];
+    console.log("[vitrine] statusContrato values from Bubble:", distinct);
+    console.log("[vitrine] total contracts:", data.contracts.length, "| source:", data.source);
+  }
+
   const filtered = data.contracts
     .filter((c) => !acceptedIds.has(c.id))
-    .filter((c) => c.statusContrato === activeTab)
+    .filter((c) =>
+      activeTab === "SAP"
+        ? c.statusContrato === "SAP"
+        : c.statusContrato !== "SAP", // JUD = tudo que não é SAP (catch-all)
+    )
     .filter((c) => {
       const term = q.toLowerCase();
       return (
