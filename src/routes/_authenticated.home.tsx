@@ -125,9 +125,19 @@ function Dashboard() {
       setAbandonandoId(casoId);
       return abandonar({ data: { casoId, contratoId, motivo } });
     },
-    onSuccess: () => {
-      toast.success("Caso abandonado. O contrato voltou para a vitrine.");
+    onSuccess: (_result, { casoId }) => {
+      // Atualiza cache imediatamente — sem esperar refetch da API
+      queryClient.setQueryData(["contracts"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          casos: old.casos.map((c: any) =>
+            c.id === casoId ? { ...c, status: "ABANDONADO" } : c
+          ),
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      toast.success("Caso abandonado. O contrato voltou para a vitrine.");
       setAbandonandoId(null);
       setAbandonPopup(null);
       setMotivoAbandono("");
@@ -153,9 +163,19 @@ function Dashboard() {
       }
       return finalizar({ data: { casoId, contratoId, arquivo: arquivoBase64, arquivoNome } });
     },
-    onSuccess: () => {
-      toast.success("Processo finalizado com sucesso!");
+    onSuccess: (_result, { casoId }) => {
+      // Atualiza cache imediatamente — sem esperar refetch da API
+      queryClient.setQueryData(["contracts"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          casos: old.casos.map((c: any) =>
+            c.id === casoId ? { ...c, status: "FINALIZADO" } : c
+          ),
+        };
+      });
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
+      toast.success("Processo finalizado com sucesso!");
       setFinalizandoId(null);
       setFinalizarPopup(null);
       setArquivoFile(null);
