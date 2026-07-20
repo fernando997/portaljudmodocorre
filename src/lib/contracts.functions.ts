@@ -103,6 +103,9 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
   const session = await getAppSession();
   if (!session.data.userId) throw new Error("Não autenticado");
 
+  const { getAdvogadoId } = await import("./cases.functions");
+  const advogadoId = await getAdvogadoId();
+
   const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
   const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
   const platformToken = process.env.VITE_BUBBLE_PLATFORM_TOKEN;
@@ -133,7 +136,8 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
           offset,
           limit: offset + PAGE_SIZE,
           apikey: apiToken ?? "",
-          contratos: "",
+          contratos: null,
+          advogado_id: advogadoId,
         };
         debugLog("get_contratos:request", { endpoint, body });
 
@@ -246,10 +250,11 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
 
       source = "bubble";
     } catch (e) {
-      console.error("Falha Bubble, usando mock:", e);
-      raw = MOCK;
+      console.error("[BUBBLE ERROR]", e);
+      throw e;
     }
   } else {
+    console.error("[MOCK FALLBACK] Env vars ausentes — baseUrl:", baseUrl, "platformToken:", !!platformToken);
     raw = MOCK;
   }
 
@@ -322,7 +327,7 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
     casos,
     stats: { total, ativos, bloqueados, encerrados, comissaoTotal },
     chartMonths: months,
-    advogadoId: session.data.advogadoId ?? "",
+    advogadoId,
     comissao: session.data.comissao ?? 0,
     apiEnv: baseUrl?.includes("version-test") ? "DEV" : baseUrl ? "PROD" : "NONE",
   };

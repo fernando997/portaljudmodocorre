@@ -3,7 +3,7 @@ import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@ta
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, FileText, ExternalLink, Loader2, ShieldAlert, Car, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, FileText, ExternalLink, Loader2, ShieldAlert, Car, CheckCircle2, Video, Download, Clapperboard } from "lucide-react";
 
 import {
   AlertDialog,
@@ -94,6 +94,67 @@ function FechamentoRow({
       >
         {negative && value > 0 ? `(-) ${brl(value)}` : brl(value)}
       </span>
+    </div>
+  );
+}
+
+function VistoriaCard({
+  label,
+  vistoria,
+}: {
+  label: string;
+  vistoria: { data: string; video: string; midia: "imagem" | "video" | ""; pdf: string } | null;
+}) {
+  return (
+    <div className="rounded-xl border border-border/40 bg-background/40 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+          {label}
+        </span>
+        {vistoria?.data && (
+          <span className="text-xs text-muted-foreground">{vistoria.data}</span>
+        )}
+      </div>
+
+      {!vistoria ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">
+          Sem registro de vistoria
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {vistoria.video && vistoria.midia === "imagem" ? (
+            <img
+              src={vistoria.video}
+              alt={label}
+              className="aspect-video w-full rounded-lg border border-border/40 bg-black object-contain"
+            />
+          ) : vistoria.video ? (
+            <video
+              controls
+              preload="auto"
+              playsInline
+              className="aspect-video w-full rounded-lg border border-border/40 bg-black"
+              src={vistoria.video}
+            />
+          ) : (
+            <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-border/40 bg-muted/30 text-muted-foreground">
+              <Clapperboard className="h-8 w-8 opacity-40" />
+            </div>
+          )}
+          {vistoria.pdf && (
+            <a
+              href={vistoria.pdf}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+              className="flex items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Baixar PDF da vistoria
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -421,6 +482,19 @@ function ContractDetailPage() {
           </div>
         );
         })()}
+      </div>
+
+      <div className="rounded-2xl border border-border/50 bg-card p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <Video className="h-5 w-5 text-primary" />
+          <h3 className="font-display text-lg font-semibold">
+            Vistoria — Antes e Depois
+          </h3>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <VistoriaCard label="Antes (Entrega)" vistoria={d.vistoriaAntes} />
+          <VistoriaCard label="Depois (Devolução)" vistoria={d.vistoriaDepois} />
+        </div>
       </div>
 
       <AlertDialog open={showAvarias} onOpenChange={setShowAvarias}>

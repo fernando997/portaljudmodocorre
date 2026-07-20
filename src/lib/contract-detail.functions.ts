@@ -71,6 +71,9 @@ export type ContractDetail = {
     data: string;
     valor: number;
   }[];
+
+  vistoriaAntes: { data: string; video: string; midia: "imagem" | "video" | ""; pdf: string } | null;
+  vistoriaDepois: { data: string; video: string; midia: "imagem" | "video" | ""; pdf: string } | null;
 };
 
 function num(v: unknown): number {
@@ -84,6 +87,20 @@ function num(v: unknown): number {
 
 function str(v: unknown): string {
   return String(v ?? "");
+}
+
+function fileUrl(v: unknown): string {
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  return s.startsWith("//") ? `https:${s}` : s;
+}
+
+function classifyMidia(url: string): "imagem" | "video" | "" {
+  if (!url) return "";
+  const clean = url.split("?")[0].toLowerCase();
+  if (/\.(jpe?g|png|gif|webp|bmp|heic)$/.test(clean)) return "imagem";
+  if (/\.(mp4|mov|webm|m4v|avi|mkv)$/.test(clean)) return "video";
+  return "video";
 }
 
 function formatPhone(raw: string): string {
@@ -153,6 +170,7 @@ export const getContractDetail = createServerFn({ method: "GET" })
     const parcArr: any[] = d.parcelas ?? d.parcela ?? [];
     const avariasItensArr: any[] = d.avarias ?? [];
     const multasArr: any[] = d.multas ?? [];
+    const vistoriasArr: any[] = d.vistorias ?? [];
 
     debugLog("get_contrato_detalhe:parsed", {
       contratoKeys: Object.keys(ctr),
@@ -164,10 +182,43 @@ export const getContractDetail = createServerFn({ method: "GET" })
       multas: multasArr.length,
       multasKeys: multasArr[0] ? Object.keys(multasArr[0]) : [],
       sampleMulta: multasArr[0],
+      vistorias: vistoriasArr.length,
+      vistoriasKeys: vistoriasArr[0] ? Object.keys(vistoriasArr[0]) : [],
       allResponseKeys: Object.keys(d),
     });
 
     const fech = fechArr[0] ?? null;
+
+    const vistoriasNormalizadas = vistoriasArr
+      .map((v: any) => {
+        const rawData = v["data"] ?? v["Created Date"] ?? "";
+        const ts =
+          typeof rawData === "number" ? rawData : new Date(str(rawData)).getTime();
+        const videoUrl = fileUrl(v["VIDEO"] ?? v["video"] ?? "");
+        return {
+          tipo: str(v["tipo"] ?? "").trim().toUpperCase(),
+          data: formatDate(rawData),
+          video: videoUrl,
+          midia: classifyMidia(videoUrl),
+          pdf: fileUrl(v["Vistoria_pdf"] ?? v["vistoria_pdf"] ?? ""),
+          ts,
+        };
+      })
+      .filter((v) => Number.isFinite(v.ts) && !isNaN(v.ts));
+
+    const maisRecentePorTipo = (tipo: string) =>
+      vistoriasNormalizadas
+        .filter((v) => v.tipo === tipo)
+        .sort((a, b) => b.ts - a.ts)[0] ?? null;
+
+    const vistoriaAntes = maisRecentePorTipo("ENTREGA");
+    const vistoriaDepois = maisRecentePorTipo("DEVOLUÇÃO");
+
+    debugLog("get_contrato_detalhe:vistorias", {
+      tipos: vistoriasNormalizadas.map((v) => v.tipo),
+      encontrouAntes: !!vistoriaAntes,
+      encontrouDepois: !!vistoriaDepois,
+    });
 
     let urlContratoAssinado = str(ctr.contrato_assinado);
     try {
@@ -266,6 +317,13 @@ export const getContractDetail = createServerFn({ method: "GET" })
         data: m.data ? str(m.data) : "",
         valor: num(m.valor),
       })),
+
+      vistoriaAntes: vistoriaAntes
+        ? { data: vistoriaAntes.data, video: vistoriaAntes.video, midia: vistoriaAntes.midia, pdf: vistoriaAntes.pdf }
+        : null,
+      vistoriaDepois: vistoriaDepois
+        ? { data: vistoriaDepois.data, video: vistoriaDepois.video, midia: vistoriaDepois.midia, pdf: vistoriaDepois.pdf }
+        : null,
     };
 
     return detail;
