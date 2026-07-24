@@ -34,3 +34,5 @@ coisas/
 *.njsproj
 *.sln
 *.sw?
+.vercel
+.env*
