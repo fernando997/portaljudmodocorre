@@ -27,6 +27,14 @@ export type ContractDetail = {
   fiadorCpf: string;
   fiadorTelefone: string;
 
+  locadoraBubbleId: string;
+  locadoraNomeSocial: string;
+  locadoraCnpj: string;
+  locadoraLogradouro: string;
+  locadoraNumero: string;
+  locadoraBairro: string;
+  locadoraCidade: string;
+
   fechamento: {
     totalFechamento: number;
     parcelasEmAberto: number;
@@ -170,6 +178,9 @@ export const getContractDetail = createServerFn({ method: "GET" })
     const ctr = d.contrato ?? {};
     const cust = d.customer ?? {};
     const fiad = d.fiador ?? {};
+    // A chave veio com espaço sobrando no workflow do Bubble ("locadora ") —
+    // aceitar as duas variações pra não depender de corrigirem isso lá.
+    const locad = d["locadora "] ?? d.locadora ?? {};
     const fechArr: any[] = d.fechamento ?? [];
     const parcArr: any[] = d.parcelas ?? d.parcela ?? [];
     const avariasItensArr: any[] = d.avarias ?? [];
@@ -257,6 +268,14 @@ export const getContractDetail = createServerFn({ method: "GET" })
       fiadorNome: str(fiad.nome),
       fiadorCpf: str(fiad.cpf),
       fiadorTelefone: fiad.whatsapp ? formatPhone(str(fiad.whatsapp)) : "",
+
+      locadoraBubbleId: str(locad._id),
+      locadoraNomeSocial: str(locad.nome),
+      locadoraCnpj: str(locad.cnpj),
+      locadoraLogradouro: str(locad.logradouro),
+      locadoraNumero: str(locad.numero),
+      locadoraBairro: str(locad.bairro),
+      locadoraCidade: str(locad.cidade),
 
       fechamento: fech
         ? {

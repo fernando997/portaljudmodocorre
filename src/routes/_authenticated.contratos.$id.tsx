@@ -27,6 +27,7 @@ import {
 } from "@/lib/contract-detail.functions";
 import { getContracts } from "@/lib/contracts.functions";
 import { aceitarCaso } from "@/lib/cases.functions";
+import { getProcuracaoUrl } from "@/lib/procuracao.functions";
 
 const detailQuery = (id: string) =>
   queryOptions({
@@ -166,9 +167,25 @@ function ContractDetailPage() {
   const [showAvarias, setShowAvarias] = useState(false);
   const [showMultas, setShowMultas] = useState(false);
   const [aceitando, setAceitando] = useState(false);
+  const [baixandoProcuracao, setBaixandoProcuracao] = useState(false);
 
   const queryClient = useQueryClient();
   const aceitar = useServerFn(aceitarCaso);
+  const buscarProcuracao = useServerFn(getProcuracaoUrl);
+
+  const handleBaixarProcuracao = async () => {
+    setBaixandoProcuracao(true);
+    try {
+      const { url } = await buscarProcuracao({
+        data: { locadoraBubbleId: d.locadoraBubbleId },
+      });
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao baixar procuração");
+    } finally {
+      setBaixandoProcuracao(false);
+    }
+  };
 
   const jaAceito = (contractsData?.casos ?? []).some(
     (c) => c.contratoId === id,
@@ -265,6 +282,38 @@ function ContractDetailPage() {
             <div className="h-px bg-border/30" />
 
             <div>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-primary">Locadora</div>
+                {d.locadoraBubbleId && (
+                  <button
+                    onClick={handleBaixarProcuracao}
+                    disabled={baixandoProcuracao}
+                    className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 disabled:opacity-50"
+                  >
+                    {baixandoProcuracao ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <FileText className="h-3.5 w-3.5" />
+                    )}
+                    Procuração
+                  </button>
+                )}
+              </div>
+              <Field label="Nome Social" value={d.locadoraNomeSocial} />
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Field label="CNPJ" value={d.locadoraCnpj} />
+                <Field label="Bairro" value={d.locadoraBairro} />
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <Field label="Logradouro" value={d.locadoraLogradouro} />
+                <Field label="Número" value={d.locadoraNumero} />
+                <Field label="Cidade" value={d.locadoraCidade} />
+              </div>
+            </div>
+
+            <div className="h-px bg-border/30" />
+
+            <div>
               <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">Período</div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field label="Início do contrato" value={formatDate(d.inicio)} />
@@ -275,16 +324,6 @@ function ContractDetailPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            {!jaAceito && (
-              <button
-                onClick={() => aceitarMutation.mutate()}
-                disabled={aceitando}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/25 transition-all hover:shadow-lg hover:shadow-primary/40 disabled:opacity-50"
-              >
-                {aceitando ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                Aceitar Caso
-              </button>
-            )}
             <a
               href={d.urlContratoAssinado || "#"}
               target="_blank"
@@ -641,6 +680,17 @@ function ContractDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {!jaAceito && (
+        <button
+          onClick={() => aceitarMutation.mutate()}
+          disabled={aceitando}
+          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-6 py-4 text-sm font-bold text-primary-foreground shadow-2xl shadow-primary/40 transition-all hover:scale-105 hover:shadow-primary/60 disabled:opacity-50 disabled:hover:scale-100"
+        >
+          {aceitando ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+          Aceitar Caso
+        </button>
+      )}
     </div>
   );
 }
