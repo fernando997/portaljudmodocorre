@@ -14,7 +14,6 @@ export const requestOtp = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }) => {
     const { getAppSession } = await import("./session.server");
-    const { debugLog } = await import("./debug.server");
     const session = await getAppSession();
 
     const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
@@ -27,7 +26,6 @@ export const requestOtp = createServerFn({ method: "POST" })
 
     const getUsuarioUrl = `${baseUrl.replace(/\/$/, "")}/get_usuario`;
     const getUsuarioBody = { celular: data.phone, apikey: apiToken ?? "" };
-    debugLog("get_usuario:request", { url: getUsuarioUrl, body: getUsuarioBody });
 
     const userRes = await fetch(getUsuarioUrl, {
       method: "POST",
@@ -39,7 +37,6 @@ export const requestOtp = createServerFn({ method: "POST" })
     });
 
     const userRaw = await userRes.text();
-    debugLog("get_usuario:response", { status: userRes.status, body: userRaw });
 
     if (!userRes.ok) {
       throw new Error("Não encontramos registro desse celular!");
@@ -49,7 +46,6 @@ export const requestOtp = createServerFn({ method: "POST" })
     try { userJson = JSON.parse(userRaw); } catch {}
     const userData = userJson.response ?? userJson;
     const advogado = userData.usuario ?? null;
-    debugLog("get_usuario:parsed", { advogado });
 
     if (!advogado?._id) {
       throw new Error("Não encontramos registro desse celular!");
@@ -62,7 +58,6 @@ export const requestOtp = createServerFn({ method: "POST" })
     const url = `${baseUrl.replace(/\/$/, "")}/enviar-codigo-jud`;
     const code = Math.floor(100000 + Math.random() * 900000);
     const body = { telefone: Number(data.phone), codigo: code, apikey: apiToken ?? "" };
-    debugLog("enviar-codigo-jud:request", { url, body });
 
     const res = await fetch(url, {
       method: "POST",
@@ -74,7 +69,6 @@ export const requestOtp = createServerFn({ method: "POST" })
     });
 
     const rawText = await res.text();
-    debugLog("enviar-codigo-jud:response", { status: res.status, body: rawText });
     const expires = Date.now() + 5 * 60 * 1000;
 
     await session.update({
@@ -96,7 +90,6 @@ export const verifyOtp = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data }) => {
     const { getAppSession } = await import("./session.server");
-    const { debugLog } = await import("./debug.server");
     const session = await getAppSession();
     const s = session.data;
 
@@ -121,7 +114,6 @@ export const verifyOtp = createServerFn({ method: "POST" })
     if (baseUrl && platformToken) {
       const url = `${baseUrl.replace(/\/$/, "")}/verificar-codigo-jud`;
       const body = { celular: Number(phone), codigo: Number(data.code), apikey: apiToken ?? "" };
-      debugLog("verificar-codigo-jud:request", { url, body });
 
       const res = await fetch(url, {
         method: "POST",
@@ -133,7 +125,6 @@ export const verifyOtp = createServerFn({ method: "POST" })
       });
 
       const rawText = await res.text();
-      debugLog("verificar-codigo-jud:response", { status: res.status, body: rawText });
 
       if (!res.ok) {
         return { ok: false as const, error: "Falha ao verificar código no servidor." };
@@ -141,7 +132,6 @@ export const verifyOtp = createServerFn({ method: "POST" })
 
       const json = JSON.parse(rawText);
       const responseData = json.response ?? json;
-      debugLog("verificar-codigo-jud:parsed", responseData);
     }
 
     await session.update({

@@ -23,6 +23,7 @@ dist-ssr
 
 # Dados exportados do banco (contém PII de clientes — nunca commitar)
 coisas/
+banco de dados/
 
 # Editor directories and files
 .vscode/*

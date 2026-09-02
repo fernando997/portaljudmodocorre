@@ -19,7 +19,7 @@ export type Contract = {
   status: "ativo" | "bloqueado" | "encerrado";
 };
 
-type CustomerInfo = {
+export type CustomerInfo = {
   nome_completo: string;
   celular: string;
   cidade: string;
@@ -27,14 +27,14 @@ type CustomerInfo = {
   fiador: string;
 };
 
-function parseBrl(v: unknown): number {
+export function parseBrl(v: unknown): number {
   if (typeof v === "number") return v;
   if (typeof v !== "string") return 0;
   const n = Number(v.replace(/\./g, "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
 
-function formatPhone(raw: string): string {
+export function formatPhone(raw: string): string {
   const d = raw.replace(/\D/g, "");
   if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
@@ -43,7 +43,7 @@ function formatPhone(raw: string): string {
 
 const BUBBLE_ID_RE = /^\d+x\d+$/;
 
-function normalize(raw: any, idx: number, customers: Map<string, CustomerInfo>, fechamentos: Map<string, number>): Contract {
+export function normalize(raw: any, idx: number, customers: Map<string, CustomerInfo>, fechamentos: Map<string, number>): Contract {
   const bloqueio = String(raw["bloqueio"] ?? "").trim();
   const aditivo = String(raw["Aditivo"] ?? raw["aditivo"] ?? "").trim();
   const statusBubble = String(raw["status"] ?? "").trim();
@@ -121,7 +121,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
 
   if (baseUrl && platformToken) {
     try {
-      const { debugLog } = await import("./debug.server");
       const endpoint = `${baseUrl.replace(/\/$/, "")}/get_contratos`;
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
@@ -139,7 +138,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
           contratos: null,
           advogado_id: advogadoId,
         };
-        debugLog("get_contratos:request", { endpoint, body });
 
         const res = await fetch(endpoint, {
           method: "POST",
@@ -148,11 +146,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
         });
 
         const rawText = await res.text();
-        debugLog("get_contratos:response", {
-          status: res.status,
-          offset,
-          bodyPreview: rawText.slice(0, 500),
-        });
 
         if (!res.ok) throw new Error(`Bubble respondeu ${res.status}`);
         const json = JSON.parse(rawText);
@@ -166,25 +159,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
         const pageCustomers: any[] = data.customer ?? [];
         const pageFiadores: any[] = data.fiador ?? [];
         const pageFechamentos: any[] = data.fechamento ?? [];
-
-        if (offset === 0) {
-          debugLog("get_contratos:fields", {
-            contratoKeys: pageContracts[0] ? Object.keys(pageContracts[0]) : [],
-            customerKeys: pageCustomers[0] ? Object.keys(pageCustomers[0]) : [],
-            fiadorKeys: pageFiadores[0] ? Object.keys(pageFiadores[0]) : [],
-            fechamentoKeys: pageFechamentos[0] ? Object.keys(pageFechamentos[0]) : [],
-            sampleFiador: pageFiadores[0],
-            sampleFechamento: pageFechamentos[0],
-          });
-        }
-        debugLog("get_contratos:page", {
-          offset,
-          contratos: pageContracts.length,
-          customers: pageCustomers.length,
-          fiadores: pageFiadores.length,
-          fechamentos: pageFechamentos.length,
-          total: totalFromBubble,
-        });
 
         raw.push(...pageContracts);
 
@@ -226,14 +200,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
         }
 
         const pageCasos: any[] = data.casos ?? data.caso ?? [];
-        if (offset === 0) {
-          debugLog("get_contratos:casos", {
-            casosCount: pageCasos.length,
-            casosKeys: pageCasos[0] ? Object.keys(pageCasos[0]) : [],
-            sampleCaso: pageCasos[0],
-            allResponseKeys: Object.keys(data),
-          });
-        }
         for (const caso of pageCasos) {
           const casoId = String(caso["_id"] ?? "");
           if (casoId && !seenCasos.has(casoId)) {
@@ -267,18 +233,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
   });
   const contracts = deduped.map((r, i) => normalize(r, i, customers, fechamentos));
 
-  if (source === "bubble") {
-    const { debugLog } = await import("./debug.server");
-    const statusGroups: Record<string, number> = {};
-    const statusWithValue: Record<string, number> = {};
-    for (const c of contracts) {
-      const s = c.statusContrato || "(vazio)";
-      statusGroups[s] = (statusGroups[s] ?? 0) + 1;
-      if (c.totalFechamento > 0) statusWithValue[s] = (statusWithValue[s] ?? 0) + 1;
-    }
-    debugLog("contratos:statusDistribution", { statusGroups, statusWithValue, fechamentosCount: fechamentos.size });
-  }
-
   const total = contracts.length;
   const ativos = contracts.filter((c) => c.status === "ativo").length;
   const bloqueados = contracts.filter((c) => c.status === "bloqueado").length;
@@ -308,18 +262,6 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
     file: String(c["file"] ?? c["arquivo"] ?? ""),
     dataConclusao: c["data_conclusao"] ? Number(c["data_conclusao"]) : 0,
   }));
-
-  if (casos.length > 0 && source === "bubble") {
-    const { debugLog } = await import("./debug.server");
-    const matchedContracts = casos.map((c) => {
-      const ctr = contracts.find((ct) => ct.id === c.contratoId);
-      return { casoId: c.id, contratoId: c.contratoId, advogadoId: c.advogadoId, status: c.status, found: !!ctr, nrContrato: ctr?.nrContrato, clienteNome: ctr?.clienteNome };
-    });
-    debugLog("casos:match", { sessionAdvogadoId: session.data.advogadoId, matchedContracts });
-    debugLog("casos:raw-sample", rawCasos.length > 0 ? { firstCaso: rawCasos[0] } : { empty: true });
-    const rawFinalizado = rawCasos.find((c: any) => String(c["status"] ?? "") === "FINALIZADO");
-    if (rawFinalizado) debugLog("casos:raw-finalizado", rawFinalizado);
-  }
 
   return {
     source,

@@ -54,14 +54,12 @@ export const aceitarCaso = createServerFn({ method: "POST" })
     if (!baseUrl) throw new Error("VITE_BUBBLE_BASE_URL não configurada.");
     const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
 
-    const { debugLog } = await import("./debug.server");
     const url = `${baseUrl.replace(/\/$/, "")}/aceitar_caso`;
     const body = {
       apikey: apiToken ?? "",
       contrato_id: data.contratoId,
       advogado_id: advogadoId,
     };
-    debugLog("aceitar_caso:request", { url, body });
 
     const res = await fetch(url, {
       method: "POST",
@@ -70,7 +68,6 @@ export const aceitarCaso = createServerFn({ method: "POST" })
     });
 
     const rawText = await res.text();
-    debugLog("aceitar_caso:response", { status: res.status, body: rawText });
 
     if (!res.ok) throw new Error("Erro ao aceitar caso.");
     return { ok: true as const };
@@ -91,7 +88,6 @@ export const abandonarCaso = createServerFn({ method: "POST" })
     if (!baseUrl) throw new Error("VITE_BUBBLE_BASE_URL não configurada.");
     const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
 
-    const { debugLog } = await import("./debug.server");
     const url = `${baseUrl.replace(/\/$/, "")}/abandonar_caso`;
     const body = {
       apikey: apiToken ?? "",
@@ -100,7 +96,6 @@ export const abandonarCaso = createServerFn({ method: "POST" })
       motivo: data.motivo,
       data_abandono: new Date().toISOString(),
     };
-    debugLog("abandonar_caso:request", { url, body });
 
     const res = await fetch(url, {
       method: "POST",
@@ -109,7 +104,6 @@ export const abandonarCaso = createServerFn({ method: "POST" })
     });
 
     const rawText = await res.text();
-    debugLog("abandonar_caso:response", { status: res.status, body: rawText });
 
     if (!res.ok) throw new Error("Erro ao abandonar caso.");
     return { ok: true as const };
@@ -133,6 +127,37 @@ async function uploadToTmpFiles(base64Data: string, filename: string): Promise<s
   return json.data.url.replace("tmpfiles.org/", "tmpfiles.org/dl/");
 }
 
+async function uploadToVercelBlob(base64Data: string, filename: string): Promise<string> {
+  const { put } = await import("@vercel/blob");
+  const base64Content = base64Data.replace(/^data:[^;]+;base64,/, "");
+  const buffer = Buffer.from(base64Content, "base64");
+
+  const result = await put(`casos/${filename}`, buffer, {
+    access: "public",
+    addRandomSuffix: true,
+    token: process.env.BLOB_READ_WRITE_TOKEN,
+  });
+
+  return result.url;
+}
+
+// Vercel Blob é o destino permanente e privado do projeto. tmpfiles.org (público,
+// sem autenticação) é mantido só como fallback enquanto BLOB_READ_WRITE_TOKEN
+// não estiver configurado, para não quebrar a finalização de casos em produção.
+async function uploadArquivoFinalizacao(base64Data: string, filename: string): Promise<string> {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      const url = await uploadToVercelBlob(base64Data, filename);
+      return url;
+    } catch (e) {
+      void e;
+    }
+  }
+
+  const url = await uploadToTmpFiles(base64Data, filename);
+  return url;
+}
+
 export const finalizarCaso = createServerFn({ method: "POST" })
   .inputValidator(
     (d: { casoId: string; contratoId: string; arquivo?: string; arquivoNome?: string }) => ({
@@ -151,11 +176,9 @@ export const finalizarCaso = createServerFn({ method: "POST" })
     if (!baseUrl) throw new Error("VITE_BUBBLE_BASE_URL não configurada.");
     const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
 
-    const { debugLog } = await import("./debug.server");
-
     let fileUrl = "";
     if (data.arquivo) {
-      fileUrl = await uploadToTmpFiles(data.arquivo, data.arquivoNome || "arquivo.pdf");
+      fileUrl = await uploadArquivoFinalizacao(data.arquivo, data.arquivoNome || "arquivo.pdf");
     }
 
     const url = `${baseUrl.replace(/\/$/, "")}/finalizar_caso`;
@@ -165,12 +188,6 @@ export const finalizarCaso = createServerFn({ method: "POST" })
       data_conclusao: new Date().toISOString(),
       file: fileUrl,
     };
-    debugLog("finalizar_caso:request", {
-      url,
-      caso_id: data.contratoId,
-      fileUrl,
-      arquivoNome: data.arquivoNome,
-    });
 
     const res = await fetch(url, {
       method: "POST",
@@ -179,7 +196,6 @@ export const finalizarCaso = createServerFn({ method: "POST" })
     });
 
     const rawText = await res.text();
-    debugLog("finalizar_caso:response", { status: res.status, body: rawText });
 
     if (!res.ok) throw new Error("Erro ao finalizar caso.");
     return { ok: true as const };
@@ -200,10 +216,8 @@ export const getCasos = createServerFn({ method: "GET" }).handler(async () => {
 
   const advogadoId = await getAdvogadoId();
 
-  const { debugLog } = await import("./debug.server");
   const url = `${baseUrl.replace(/\/$/, "")}/get_casos`;
   const body = { apikey: apiToken ?? "", advogado_id: advogadoId };
-  debugLog("get_casos:request", { url, body });
 
   const res = await fetch(url, {
     method: "POST",
@@ -212,7 +226,6 @@ export const getCasos = createServerFn({ method: "GET" }).handler(async () => {
   });
 
   const rawText = await res.text();
-  debugLog("get_casos:response", { status: res.status, body: rawText.slice(0, 1000) });
 
   if (!res.ok) return { casos: [] as Case[], contracts: [] as any[] };
 
@@ -226,11 +239,6 @@ export const getCasos = createServerFn({ method: "GET" }).handler(async () => {
     advogadoId: String(c.advogado ?? ""),
     status: String(c.status ?? ""),
   }));
-
-  debugLog("get_casos:parsed", {
-    total: casos.length,
-    sample: casos[0],
-  });
 
   return { casos };
 });

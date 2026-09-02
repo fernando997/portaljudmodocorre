@@ -70,13 +70,14 @@ export type ContractDetail = {
     local: string;
     data: string;
     valor: number;
+    aitPdfUrl: string;
   }[];
 
   vistoriaAntes: { data: string; video: string; midia: "imagem" | "video" | ""; pdf: string } | null;
   vistoriaDepois: { data: string; video: string; midia: "imagem" | "video" | ""; pdf: string } | null;
 };
 
-function num(v: unknown): number {
+export function num(v: unknown): number {
   if (typeof v === "number") return v;
   if (typeof v === "string") {
     const n = Number(v.replace(/\./g, "").replace(",", "."));
@@ -85,22 +86,31 @@ function num(v: unknown): number {
   return 0;
 }
 
-function str(v: unknown): string {
+export function str(v: unknown): string {
   return String(v ?? "");
 }
 
-function fileUrl(v: unknown): string {
+export function fileUrl(v: unknown): string {
   const s = String(v ?? "").trim();
   if (!s) return "";
   return s.startsWith("//") ? `https:${s}` : s;
 }
 
-function classifyMidia(url: string): "imagem" | "video" | "" {
+export function classifyMidia(url: string): "imagem" | "video" | "" {
   if (!url) return "";
   const clean = url.split("?")[0].toLowerCase();
   if (/\.(jpe?g|png|gif|webp|bmp|heic)$/.test(clean)) return "imagem";
   if (/\.(mp4|mov|webm|m4v|avi|mkv)$/.test(clean)) return "video";
   return "video";
+}
+
+// valor_bruto de multas_detalhes vem em decimal-ponto simples (ex: "130.16"),
+// diferente dos campos BRL do Bubble — não usar num() aqui.
+export function numDecimal(v: unknown): number {
+  if (typeof v === "number") return v;
+  if (typeof v !== "string") return 0;
+  const n = Number(v.trim().replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
 }
 
 function formatPhone(raw: string): string {
@@ -138,10 +148,8 @@ export const getContractDetail = createServerFn({ method: "GET" })
 
     if (!baseUrl || !platformToken) throw new Error("API não configurada");
 
-    const { debugLog } = await import("./debug.server");
     const url = `${baseUrl.replace(/\/$/, "")}/get_contrato_detalhe`;
     const body = { apikey: apiToken ?? "", contrato_id: data.contratoId };
-    debugLog("get_contrato_detalhe:request", { url, body });
 
     const res = await fetch(url, {
       method: "POST",
@@ -153,10 +161,6 @@ export const getContractDetail = createServerFn({ method: "GET" })
     });
 
     const rawText = await res.text();
-    debugLog("get_contrato_detalhe:response", {
-      status: res.status,
-      body: rawText.slice(0, 2000),
-    });
 
     if (!res.ok) throw new Error("Erro ao buscar detalhes do contrato");
 
@@ -169,23 +173,14 @@ export const getContractDetail = createServerFn({ method: "GET" })
     const fechArr: any[] = d.fechamento ?? [];
     const parcArr: any[] = d.parcelas ?? d.parcela ?? [];
     const avariasItensArr: any[] = d.avarias ?? [];
-    const multasArr: any[] = d.multas ?? [];
+    // multas_detalhes tem o doc_infração (AIT), mas ainda não está populado
+    // para todos os contratos (é uma integração mais nova). Preferir essa
+    // lista quando tiver dado; senão cair pro "multas" antigo (sem AIT) pra
+    // não sumir com multas de contratos que ainda não têm multas_detalhes.
+    const multasDetalhesArr: any[] = d.multas_detalhes ?? [];
+    const multasArr: any[] = multasDetalhesArr.length > 0 ? multasDetalhesArr : (d.multas ?? []);
+    const usandoMultasDetalhes = multasDetalhesArr.length > 0;
     const vistoriasArr: any[] = d.vistorias ?? [];
-
-    debugLog("get_contrato_detalhe:parsed", {
-      contratoKeys: Object.keys(ctr),
-      customerKeys: Object.keys(cust),
-      fiadorKeys: Object.keys(fiad),
-      fechamentos: fechArr.length,
-      parcelas: parcArr.length,
-      avariasItens: avariasItensArr.length,
-      multas: multasArr.length,
-      multasKeys: multasArr[0] ? Object.keys(multasArr[0]) : [],
-      sampleMulta: multasArr[0],
-      vistorias: vistoriasArr.length,
-      vistoriasKeys: vistoriasArr[0] ? Object.keys(vistoriasArr[0]) : [],
-      allResponseKeys: Object.keys(d),
-    });
 
     const fech = fechArr[0] ?? null;
 
@@ -214,17 +209,10 @@ export const getContractDetail = createServerFn({ method: "GET" })
     const vistoriaAntes = maisRecentePorTipo("ENTREGA");
     const vistoriaDepois = maisRecentePorTipo("DEVOLUÇÃO");
 
-    debugLog("get_contrato_detalhe:vistorias", {
-      tipos: vistoriasNormalizadas.map((v) => v.tipo),
-      encontrouAntes: !!vistoriaAntes,
-      encontrouDepois: !!vistoriaDepois,
-    });
-
     let urlContratoAssinado = str(ctr.contrato_assinado);
     try {
       const assinadoUrl = `${baseUrl.replace(/\/$/, "")}/get_contrato_assinado`;
       const assinadoBody = { apikey: apiToken ?? "", contrato: data.contratoId };
-      debugLog("get_contrato_assinado:request", { url: assinadoUrl, body: assinadoBody });
       const assinadoRes = await fetch(assinadoUrl, {
         method: "POST",
         headers: {
@@ -234,7 +222,6 @@ export const getContractDetail = createServerFn({ method: "GET" })
         body: JSON.stringify(assinadoBody),
       });
       const assinadoRaw = await assinadoRes.text();
-      debugLog("get_contrato_assinado:response", { status: assinadoRes.status, body: assinadoRaw.slice(0, 500) });
       if (assinadoRes.ok) {
         const assinadoJson = JSON.parse(assinadoRaw);
         const assinadoData = assinadoJson.response ?? assinadoJson;
@@ -242,7 +229,7 @@ export const getContractDetail = createServerFn({ method: "GET" })
         if (zapsignUrl) urlContratoAssinado = zapsignUrl;
       }
     } catch (e) {
-      debugLog("get_contrato_assinado:error", { error: String(e) });
+      void e;
     }
 
     const detail: ContractDetail = {
@@ -310,13 +297,25 @@ export const getContractDetail = createServerFn({ method: "GET" })
         valorTotal: num(it["valor total"] ?? it.valor_total ?? 0),
       })),
 
-      multas: multasArr.map((m: any) => ({
-        id: str(m._id),
-        descricao: str(m["descrição"] ?? m.descricao),
-        local: str(m.local),
-        data: m.data ? str(m.data) : "",
-        valor: num(m.valor),
-      })),
+      multas: multasArr.map((m: any) =>
+        usandoMultasDetalhes
+          ? {
+              id: str(m._id),
+              descricao: str(m["descrição"] ?? m.descricao),
+              local: str(m.endereco),
+              data: m.data ? formatDate(m.data) : "",
+              valor: numDecimal(m.valor_bruto),
+              aitPdfUrl: fileUrl(m["doc_infração"] ?? m["doc_infracao"]),
+            }
+          : {
+              id: str(m._id),
+              descricao: str(m["descrição"] ?? m.descricao),
+              local: str(m.local),
+              data: m.data ? formatDate(m.data) : "",
+              valor: num(m.valor),
+              aitPdfUrl: "",
+            },
+      ),
 
       vistoriaAntes: vistoriaAntes
         ? { data: vistoriaAntes.data, video: vistoriaAntes.video, midia: vistoriaAntes.midia, pdf: vistoriaAntes.pdf }

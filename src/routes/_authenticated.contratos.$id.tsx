@@ -300,6 +300,16 @@ function ContractDetailPage() {
               Contrato Assinado
               <ExternalLink className="h-3 w-3" />
             </a>
+            <a
+              href="https://www.modocorre.com.br/contrato_padrao/contrato.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+            >
+              <FileText className="h-4 w-4" />
+              Termos e Condições
+              <ExternalLink className="h-3 w-3" />
+            </a>
             {d.avariasItens.length > 0 && (
               <button
                 onClick={() => setShowAvarias(true)}
@@ -557,7 +567,7 @@ function ContractDetailPage() {
       </AlertDialog>
 
       <AlertDialog open={showMultas} onOpenChange={setShowMultas}>
-        <AlertDialogContent className="max-w-2xl border-border/50 bg-card">
+        <AlertDialogContent className="max-w-[720px] border-border/50 bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 font-display text-lg">
               <Car className="h-5 w-5 text-amber-500" />
@@ -578,6 +588,7 @@ function ContractDetailPage() {
                     <TableHead className="text-xs uppercase tracking-wider">Local</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider">Data</TableHead>
                     <TableHead className="text-right text-xs uppercase tracking-wider">Valor</TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider">AIT</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -594,6 +605,22 @@ function ContractDetailPage() {
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm font-bold text-amber-500">
                         {brl(m.valor)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {m.aitPdfUrl ? (
+                          <a
+                            href={m.aitPdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            Baixar multa
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
