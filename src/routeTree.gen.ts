@@ -13,6 +13,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
+import { Route as AuthenticatedLocadorasRouteImport } from './routes/_authenticated.locadoras'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated.home'
 import { Route as AuthenticatedFinalizadosRouteImport } from './routes/_authenticated.finalizados'
 import { Route as AuthenticatedAbandonadosRouteImport } from './routes/_authenticated.abandonados'
@@ -37,6 +38,11 @@ const AuthVerifyRoute = AuthVerifyRouteImport.update({
   id: '/auth/verify',
   path: '/auth/verify',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedLocadorasRoute = AuthenticatedLocadorasRouteImport.update({
+  id: '/locadoras',
+  path: '/locadoras',
+  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
   id: '/home',
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/abandonados': typeof AuthenticatedAbandonadosRoute
   '/finalizados': typeof AuthenticatedFinalizadosRoute
   '/home': typeof AuthenticatedHomeRoute
+  '/locadoras': typeof AuthenticatedLocadorasRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth/': typeof AuthIndexRoute
   '/contratos/$id': typeof AuthenticatedContratosIdRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/abandonados': typeof AuthenticatedAbandonadosRoute
   '/finalizados': typeof AuthenticatedFinalizadosRoute
   '/home': typeof AuthenticatedHomeRoute
+  '/locadoras': typeof AuthenticatedLocadorasRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth': typeof AuthIndexRoute
   '/contratos/$id': typeof AuthenticatedContratosIdRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/_authenticated/abandonados': typeof AuthenticatedAbandonadosRoute
   '/_authenticated/finalizados': typeof AuthenticatedFinalizadosRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
+  '/_authenticated/locadoras': typeof AuthenticatedLocadorasRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/auth/': typeof AuthIndexRoute
   '/_authenticated/contratos/$id': typeof AuthenticatedContratosIdRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/abandonados'
     | '/finalizados'
     | '/home'
+    | '/locadoras'
     | '/auth/verify'
     | '/auth/'
     | '/contratos/$id'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/abandonados'
     | '/finalizados'
     | '/home'
+    | '/locadoras'
     | '/auth/verify'
     | '/auth'
     | '/contratos/$id'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/_authenticated/abandonados'
     | '/_authenticated/finalizados'
     | '/_authenticated/home'
+    | '/_authenticated/locadoras'
     | '/auth/verify'
     | '/auth/'
     | '/_authenticated/contratos/$id'
@@ -171,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/locadoras': {
+      id: '/_authenticated/locadoras'
+      path: '/locadoras'
+      fullPath: '/locadoras'
+      preLoaderRoute: typeof AuthenticatedLocadorasRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/home': {
       id: '/_authenticated/home'
       path: '/home'
@@ -213,6 +232,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAbandonadosRoute: typeof AuthenticatedAbandonadosRoute
   AuthenticatedFinalizadosRoute: typeof AuthenticatedFinalizadosRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
+  AuthenticatedLocadorasRoute: typeof AuthenticatedLocadorasRoute
   AuthenticatedContratosIdRoute: typeof AuthenticatedContratosIdRoute
   AuthenticatedContratosIndexRoute: typeof AuthenticatedContratosIndexRoute
 }
@@ -221,6 +241,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAbandonadosRoute: AuthenticatedAbandonadosRoute,
   AuthenticatedFinalizadosRoute: AuthenticatedFinalizadosRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
+  AuthenticatedLocadorasRoute: AuthenticatedLocadorasRoute,
   AuthenticatedContratosIdRoute: AuthenticatedContratosIdRoute,
   AuthenticatedContratosIndexRoute: AuthenticatedContratosIndexRoute,
 }

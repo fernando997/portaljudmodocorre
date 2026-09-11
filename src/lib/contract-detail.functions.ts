@@ -11,7 +11,7 @@ export type ContractDetail = {
   fim: number;
   novaRenovacao: number;
   observacao: string;
-  urlContratoAssinado: string;
+  temContratoAssinado: boolean;
   kmInicial: number;
   diarias: number;
 
@@ -27,7 +27,6 @@ export type ContractDetail = {
   fiadorCpf: string;
   fiadorTelefone: string;
 
-  locadoraBubbleId: string;
   locadoraNomeSocial: string;
   locadoraCnpj: string;
   locadoraLogradouro: string;
@@ -43,7 +42,7 @@ export type ContractDetail = {
     creditoDiarias: number;
     multasContratual: number;
     multaDescricao: string;
-    multaValor: number;
+    multasTransito: number;
     avarias: number;
     saldoCaucao: number;
     faturadoTotal: number;
@@ -193,6 +192,30 @@ export const getContractDetail = createServerFn({ method: "GET" })
     const usandoMultasDetalhes = multasDetalhesArr.length > 0;
     const vistoriasArr: any[] = d.vistorias ?? [];
 
+    const multasNormalizadas = multasArr.map((m: any) =>
+      usandoMultasDetalhes
+        ? {
+            id: str(m._id),
+            descricao: str(m["descrição"] ?? m.descricao),
+            local: str(m.endereco),
+            data: m.data ? formatDate(m.data) : "",
+            valor: numDecimal(m.valor_bruto),
+            aitPdfUrl: fileUrl(m["doc_infração"] ?? m["doc_infracao"]),
+          }
+        : {
+            id: str(m._id),
+            descricao: str(m["descrição"] ?? m.descricao),
+            local: str(m.local),
+            data: m.data ? formatDate(m.data) : "",
+            valor: num(m.valor),
+            aitPdfUrl: "",
+          },
+    );
+
+    // Total das multas de trânsito: soma exatamente as linhas exibidas no popup
+    // de Multas de Trânsito, para as duas telas nunca divergirem.
+    const totalMultasTransito = multasNormalizadas.reduce((soma, m) => soma + m.valor, 0);
+
     const fech = fechArr[0] ?? null;
 
     const vistoriasNormalizadas = vistoriasArr
@@ -220,28 +243,10 @@ export const getContractDetail = createServerFn({ method: "GET" })
     const vistoriaAntes = maisRecentePorTipo("ENTREGA");
     const vistoriaDepois = maisRecentePorTipo("DEVOLUÇÃO");
 
-    let urlContratoAssinado = str(ctr.contrato_assinado);
-    try {
-      const assinadoUrl = `${baseUrl.replace(/\/$/, "")}/get_contrato_assinado`;
-      const assinadoBody = { apikey: apiToken ?? "", contrato: data.contratoId };
-      const assinadoRes = await fetch(assinadoUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${platformToken}`,
-        },
-        body: JSON.stringify(assinadoBody),
-      });
-      const assinadoRaw = await assinadoRes.text();
-      if (assinadoRes.ok) {
-        const assinadoJson = JSON.parse(assinadoRaw);
-        const assinadoData = assinadoJson.response ?? assinadoJson;
-        const zapsignUrl = str(assinadoData.url_zapsign ?? "");
-        if (zapsignUrl) urlContratoAssinado = zapsignUrl;
-      }
-    } catch (e) {
-      void e;
-    }
+    // A URL assinada da ZapSign é pré-assinada e expira: buscá-la aqui deixava
+    // o HTML do SSR com um valor que já não batia na hidratação, além de custar
+    // uma chamada ao Bubble em todo carregamento. Agora ela e buscada no clique
+    // (getContratoAssinadoUrl), sempre fresca.
 
     const detail: ContractDetail = {
       id: str(ctr._id),
@@ -253,7 +258,7 @@ export const getContractDetail = createServerFn({ method: "GET" })
       fim: num(ctr.fim),
       novaRenovacao: num(ctr.nova_renovação),
       observacao: str(ctr["observação"]),
-      urlContratoAssinado,
+      temContratoAssinado: !!str(ctr.contrato_assinado),
       kmInicial: num(ctr["km inicial"]),
       diarias: num(ctr.diarias),
 
@@ -269,7 +274,6 @@ export const getContractDetail = createServerFn({ method: "GET" })
       fiadorCpf: str(fiad.cpf),
       fiadorTelefone: fiad.whatsapp ? formatPhone(str(fiad.whatsapp)) : "",
 
-      locadoraBubbleId: str(locad._id),
       locadoraNomeSocial: str(locad.nome),
       locadoraCnpj: str(locad.cnpj),
       locadoraLogradouro: str(locad.logradouro),
@@ -286,7 +290,7 @@ export const getContractDetail = createServerFn({ method: "GET" })
             creditoDiarias: num(fech.total_credito_de_diarias),
             multasContratual: num(fech.total_multas_contratual),
             multaDescricao: str(fech["multa contratual descrição"]),
-            multaValor: num(fech["multa contratual valor"]),
+            multasTransito: totalMultasTransito,
             avarias: num(fech.avarias),
             saldoCaucao: num(fech.total_saldo_caucao),
             faturadoTotal: num(fech.faturado_total),
@@ -316,25 +320,7 @@ export const getContractDetail = createServerFn({ method: "GET" })
         valorTotal: num(it["valor total"] ?? it.valor_total ?? 0),
       })),
 
-      multas: multasArr.map((m: any) =>
-        usandoMultasDetalhes
-          ? {
-              id: str(m._id),
-              descricao: str(m["descrição"] ?? m.descricao),
-              local: str(m.endereco),
-              data: m.data ? formatDate(m.data) : "",
-              valor: numDecimal(m.valor_bruto),
-              aitPdfUrl: fileUrl(m["doc_infração"] ?? m["doc_infracao"]),
-            }
-          : {
-              id: str(m._id),
-              descricao: str(m["descrição"] ?? m.descricao),
-              local: str(m.local),
-              data: m.data ? formatDate(m.data) : "",
-              valor: num(m.valor),
-              aitPdfUrl: "",
-            },
-      ),
+      multas: multasNormalizadas,
 
       vistoriaAntes: vistoriaAntes
         ? { data: vistoriaAntes.data, video: vistoriaAntes.video, midia: vistoriaAntes.midia, pdf: vistoriaAntes.pdf }
@@ -348,3 +334,40 @@ export const getContractDetail = createServerFn({ method: "GET" })
   });
 
 export { formatDate };
+
+/**
+ * Busca a URL do contrato assinado na ZapSign no momento do clique. A URL é
+ * pré-assinada e tem validade curta, por isso não é embutida no detalhe.
+ */
+export const getContratoAssinadoUrl = createServerFn({ method: "POST" })
+  .inputValidator((d: { contratoId: string }) => ({
+    contratoId: z.string().min(1).parse(d.contratoId),
+  }))
+  .handler(async ({ data }): Promise<{ url: string }> => {
+    const { getAppSession } = await import("./session.server");
+    const session = await getAppSession();
+    if (!session.data.userId) throw new Error("Não autenticado");
+
+    const baseUrl = process.env.VITE_BUBBLE_BASE_URL;
+    const platformToken = process.env.VITE_BUBBLE_PLATFORM_TOKEN;
+    const apiToken = process.env.VITE_BUBBLE_API_TOKEN;
+    if (!baseUrl || !platformToken) throw new Error("API não configurada");
+
+    const endpoint = baseUrl.replace(/\/$/, "") + "/get_contrato_assinado";
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + platformToken,
+      },
+      body: JSON.stringify({ apikey: apiToken ?? "", contrato: data.contratoId }),
+    });
+
+    if (!res.ok) throw new Error("Não foi possível obter o contrato assinado.");
+
+    const json = await res.json();
+    const url = str((json.response ?? json).url_zapsign ?? "");
+    if (!url) throw new Error("Contrato assinado não disponível para este contrato.");
+
+    return { url };
+  });

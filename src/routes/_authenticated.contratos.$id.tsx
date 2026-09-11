@@ -1,9 +1,20 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, FileText, ExternalLink, Loader2, ShieldAlert, Car, CheckCircle2, Video, Download, Clapperboard } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  ExternalLink,
+  Loader2,
+  ShieldAlert,
+  Car,
+  CheckCircle2,
+  Video,
+  Download,
+  Clapperboard,
+} from "lucide-react";
 
 import {
   AlertDialog,
@@ -23,11 +34,11 @@ import {
 } from "@/components/ui/table";
 import {
   getContractDetail,
+  getContratoAssinadoUrl,
   formatDate,
 } from "@/lib/contract-detail.functions";
 import { getContracts } from "@/lib/contracts.functions";
 import { aceitarCaso } from "@/lib/cases.functions";
-import { getProcuracaoUrl } from "@/lib/procuracao.functions";
 
 const detailQuery = (id: string) =>
   queryOptions({
@@ -44,8 +55,7 @@ export const Route = createFileRoute("/_authenticated/contratos/$id")({
   head: () => ({
     meta: [{ title: "Detalhes do Contrato — PORTAL JUD · Modo Corre" }],
   }),
-  loader: ({ context, params }) =>
-    context.queryClient.ensureQueryData(detailQuery(params.id)),
+  loader: ({ context, params }) => context.queryClient.ensureQueryData(detailQuery(params.id)),
   pendingMs: 0,
   pendingComponent: LoadingDetail,
   component: ContractDetailPage,
@@ -62,15 +72,12 @@ function LoadingDetail() {
   );
 }
 
-const brl = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-0.5 break-all rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-sm text-foreground">
         {value || "—"}
       </div>
@@ -109,18 +116,12 @@ function VistoriaCard({
   return (
     <div className="rounded-xl border border-border/40 bg-background/40 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-          {label}
-        </span>
-        {vistoria?.data && (
-          <span className="text-xs text-muted-foreground">{vistoria.data}</span>
-        )}
+        <span className="text-[10px] font-bold uppercase tracking-wider text-primary">{label}</span>
+        {vistoria?.data && <span className="text-xs text-muted-foreground">{vistoria.data}</span>}
       </div>
 
       {!vistoria ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          Sem registro de vistoria
-        </p>
+        <p className="py-6 text-center text-sm text-muted-foreground">Sem registro de vistoria</p>
       ) : (
         <div className="space-y-3">
           {vistoria.video && vistoria.midia === "imagem" ? (
@@ -161,35 +162,41 @@ function VistoriaCard({
 }
 
 function ContractDetailPage() {
+  const router = useRouter();
   const { id } = Route.useParams();
   const { data: d } = useSuspenseQuery(detailQuery(id));
   const { data: contractsData } = useSuspenseQuery(contractsQuery);
   const [showAvarias, setShowAvarias] = useState(false);
   const [showMultas, setShowMultas] = useState(false);
   const [aceitando, setAceitando] = useState(false);
-  const [baixandoProcuracao, setBaixandoProcuracao] = useState(false);
+  const [abrindoAssinado, setAbrindoAssinado] = useState(false);
 
   const queryClient = useQueryClient();
   const aceitar = useServerFn(aceitarCaso);
-  const buscarProcuracao = useServerFn(getProcuracaoUrl);
+  const buscarAssinado = useServerFn(getContratoAssinadoUrl);
 
-  const handleBaixarProcuracao = async () => {
-    setBaixandoProcuracao(true);
+  // A aba precisa ser aberta ainda dentro do gesto do clique, senão o
+  // bloqueador de pop-up barra depois do await.
+  const abrirContratoAssinado = async () => {
+    const aba = window.open("", "_blank");
+    setAbrindoAssinado(true);
     try {
-      const { url } = await buscarProcuracao({
-        data: { locadoraBubbleId: d.locadoraBubbleId },
-      });
-      window.open(url, "_blank", "noopener,noreferrer");
+      const { url } = await buscarAssinado({ data: { contratoId: id } });
+      if (aba) {
+        aba.opener = null;
+        aba.location.replace(url);
+      } else {
+        window.location.href = url;
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao baixar procuração");
+      aba?.close();
+      toast.error(err instanceof Error ? err.message : "Erro ao abrir o contrato assinado");
     } finally {
-      setBaixandoProcuracao(false);
+      setAbrindoAssinado(false);
     }
   };
 
-  const jaAceito = (contractsData?.casos ?? []).some(
-    (c) => c.contratoId === id,
-  );
+  const jaAceito = (contractsData?.casos ?? []).some((c) => c.contratoId === id);
 
   const aceitarMutation = useMutation({
     mutationFn: async () => {
@@ -210,20 +217,22 @@ function ContractDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Link
-          to="/contratos"
+        <button
+          type="button"
+          onClick={() =>
+            router.history.canGoBack()
+              ? router.history.back()
+              : router.navigate({ to: "/contratos", search: { page: 0, q: "", tab: "JUD" } })
+          }
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/50 bg-card text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-        </Link>
+        </button>
         <div>
           <h1 className="font-display text-2xl font-bold">
-            Fechamento de Contrato{" "}
-            <span className="text-primary">#{d.nrContrato}</span>
+            Fechamento de Contrato <span className="text-primary">#{d.nrContrato}</span>
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Cliente {d.clienteNome}
-          </p>
+          <p className="text-sm text-muted-foreground">Cliente {d.clienteNome}</p>
         </div>
       </div>
 
@@ -232,9 +241,7 @@ function ContractDetailPage() {
           <div className="mb-6 flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
             <div>
-              <h3 className="font-display text-lg font-semibold">
-                Dados do contrato
-              </h3>
+              <h3 className="font-display text-lg font-semibold">Dados do contrato</h3>
               <p className="text-xs text-muted-foreground">
                 Informações do cliente e período de locação
               </p>
@@ -243,7 +250,9 @@ function ContractDetailPage() {
 
           <div className="space-y-6">
             <div>
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">Contrato</div>
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
+                Contrato
+              </div>
               <div className="grid gap-3 sm:grid-cols-4">
                 <Field label="Nº Contrato" value={d.nrContrato} />
                 <Field label="Status" value={d.status} />
@@ -255,7 +264,9 @@ function ContractDetailPage() {
             <div className="h-px bg-border/30" />
 
             <div>
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">Cliente</div>
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
+                Cliente
+              </div>
               <Field label="Nome do Cliente" value={d.clienteNome} />
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <Field label="CPF" value={d.clienteCpf} />
@@ -263,7 +274,14 @@ function ContractDetailPage() {
               </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 <Field label="E-mail" value={d.clienteEmail} />
-                <Field label="Cidade / Bairro" value={d.clienteCidade ? `${d.clienteCidade}${d.clienteBairro ? ` — ${d.clienteBairro}` : ""}` : ""} />
+                <Field
+                  label="Cidade / Bairro"
+                  value={
+                    d.clienteCidade
+                      ? `${d.clienteCidade}${d.clienteBairro ? ` — ${d.clienteBairro}` : ""}`
+                      : ""
+                  }
+                />
                 <Field label="Logradouro" value={d.clienteLogradouro} />
               </div>
             </div>
@@ -271,7 +289,9 @@ function ContractDetailPage() {
             <div className="h-px bg-border/30" />
 
             <div>
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">Fiador</div>
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
+                Fiador
+              </div>
               <Field label="Fiador" value={d.fiadorNome} />
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <Field label="CPF do Fiador" value={d.fiadorCpf} />
@@ -282,22 +302,8 @@ function ContractDetailPage() {
             <div className="h-px bg-border/30" />
 
             <div>
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-primary">Locadora</div>
-                {d.locadoraBubbleId && (
-                  <button
-                    onClick={handleBaixarProcuracao}
-                    disabled={baixandoProcuracao}
-                    className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20 disabled:opacity-50"
-                  >
-                    {baixandoProcuracao ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <FileText className="h-3.5 w-3.5" />
-                    )}
-                    Procuração
-                  </button>
-                )}
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
+                Locadora
               </div>
               <Field label="Nome Social" value={d.locadoraNomeSocial} />
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -314,7 +320,9 @@ function ContractDetailPage() {
             <div className="h-px bg-border/30" />
 
             <div>
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">Período</div>
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-primary">
+                Período
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field label="Início do contrato" value={formatDate(d.inicio)} />
                 <Field label="Próxima renovação" value={formatDate(d.novaRenovacao)} />
@@ -324,21 +332,23 @@ function ContractDetailPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href={d.urlContratoAssinado || "#"}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => { if (!d.urlContratoAssinado) e.preventDefault(); }}
+            <button
+              onClick={abrirContratoAssinado}
+              disabled={!d.temContratoAssinado || abrindoAssinado}
               className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
-                d.urlContratoAssinado
+                d.temContratoAssinado
                   ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20"
-                  : "border-border/30 bg-muted/30 text-muted-foreground cursor-not-allowed"
+                  : "cursor-not-allowed border-border/30 bg-muted/30 text-muted-foreground"
               }`}
             >
-              <FileText className="h-4 w-4" />
+              {abrindoAssinado ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
               Contrato Assinado
               <ExternalLink className="h-3 w-3" />
-            </a>
+            </button>
             <a
               href="https://www.modocorre.com.br/contrato_padrao/contrato.pdf"
               target="_blank"
@@ -380,14 +390,14 @@ function ContractDetailPage() {
               {d.fechamento
                 ? brl(
                     d.fechamento.parcelasEmAberto +
-                    d.fechamento.juros10pct +
-                    d.fechamento.lancamentoFaturar +
-                    d.fechamento.multaValor +
-                    d.fechamento.multasContratual +
-                    d.fechamento.avarias +
-                    d.fechamento.diariasAdicionais -
-                    d.fechamento.creditoDiarias -
-                    d.fechamento.saldoCaucao
+                      d.fechamento.juros10pct +
+                      d.fechamento.lancamentoFaturar +
+                      d.fechamento.multasTransito +
+                      d.fechamento.multasContratual +
+                      d.fechamento.avarias +
+                      d.fechamento.diariasAdicionais -
+                      d.fechamento.creditoDiarias -
+                      d.fechamento.saldoCaucao,
                   )
                 : "—"}
             </div>
@@ -399,39 +409,14 @@ function ContractDetailPage() {
                 label="Parcelas Faturadas em aberto"
                 value={d.fechamento.parcelasEmAberto}
               />
-              <FechamentoRow
-                label="10% Sobre total em atraso"
-                value={d.fechamento.juros10pct}
-              />
-              <FechamentoRow
-                label="Lançamentos a Faturar"
-                value={d.fechamento.lancamentoFaturar}
-              />
-              <FechamentoRow
-                label="Multas"
-                value={d.fechamento.multaValor}
-              />
-              <FechamentoRow
-                label="Multas Contratual"
-                value={d.fechamento.multasContratual}
-              />
-              <FechamentoRow
-                label="Orçamento de Avarias"
-                value={d.fechamento.avarias}
-              />
-              <FechamentoRow
-                label="Diárias Adicionais"
-                value={d.fechamento.diariasAdicionais}
-              />
-              <FechamentoRow
-                label="Crédito de Diárias"
-                value={d.fechamento.creditoDiarias}
-              />
-              <FechamentoRow
-                label="Saldo do Caução"
-                value={d.fechamento.saldoCaucao}
-                negative
-              />
+              <FechamentoRow label="10% Sobre total em atraso" value={d.fechamento.juros10pct} />
+              <FechamentoRow label="Lançamentos a Faturar" value={d.fechamento.lancamentoFaturar} />
+              <FechamentoRow label="Multas de trânsito" value={d.fechamento.multasTransito} />
+              <FechamentoRow label="Multas Contratual" value={d.fechamento.multasContratual} />
+              <FechamentoRow label="Orçamento de Avarias" value={d.fechamento.avarias} />
+              <FechamentoRow label="Diárias Adicionais" value={d.fechamento.diariasAdicionais} />
+              <FechamentoRow label="Crédito de Diárias" value={d.fechamento.creditoDiarias} />
+              <FechamentoRow label="Saldo do Caução" value={d.fechamento.saldoCaucao} negative />
             </div>
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">
@@ -451,94 +436,81 @@ function ContractDetailPage() {
             (p) => p.status === "GERADO" || p.status === "CONSOLIDADO PARA FECHAMENTO",
           );
           return parcelasVisiveis.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Nenhuma parcela em aberto
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/40 hover:bg-transparent">
-                  <TableHead className="text-xs uppercase tracking-wider">
-                    Descrição
-                  </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider">
-                    Vencimento
-                  </TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider">
-                    Valor
-                  </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider">
-                    Status
-                  </TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider">
-                    Comprovante
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {parcelasVisiveis.map((p) => (
-                  <TableRow
-                    key={p.id}
-                    className="border-border/30 hover:bg-muted/40"
-                  >
-                    <TableCell className="text-sm font-medium text-foreground">
-                      {p.descricao || "—"}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {p.vencimento || "—"}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-sm font-medium text-primary">
-                      {p.valor > 0 ? brl(p.valor) : "—"}
-                    </TableCell>
-                    <TableCell>
-                      {p.status ? (
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
-                          p.status === "RECEIVED" || p.status === "CONFIRMED"
-                            ? "border-green-500/40 bg-green-500/10 text-green-400"
-                            : p.status === "OVERDUE"
-                              ? "border-destructive/40 bg-destructive/10 text-destructive"
-                              : "border-primary/40 bg-primary/10 text-primary"
-                        }`}>
-                          {p.status}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          —
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {p.comprovanteLink ? (
-                        <a
-                          href={p.comprovanteLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Ver comprovante
-                        </a>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          —
-                        </span>
-                      )}
-                    </TableCell>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nenhuma parcela em aberto
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/40 hover:bg-transparent">
+                    <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider">Vencimento</TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider">
+                      Valor
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider">
+                      Comprovante
+                    </TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        );
+                </TableHeader>
+                <TableBody>
+                  {parcelasVisiveis.map((p) => (
+                    <TableRow key={p.id} className="border-border/30 hover:bg-muted/40">
+                      <TableCell className="text-sm font-medium text-foreground">
+                        {p.descricao || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {p.vencimento || "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm font-medium text-primary">
+                        {p.valor > 0 ? brl(p.valor) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {p.status ? (
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                              p.status === "RECEIVED" || p.status === "CONFIRMED"
+                                ? "border-green-500/40 bg-green-500/10 text-green-400"
+                                : p.status === "OVERDUE"
+                                  ? "border-destructive/40 bg-destructive/10 text-destructive"
+                                  : "border-primary/40 bg-primary/10 text-primary"
+                            }`}
+                          >
+                            {p.status}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {p.comprovanteLink ? (
+                          <a
+                            href={p.comprovanteLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Ver comprovante
+                          </a>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          );
         })()}
       </div>
 
       <div className="rounded-2xl border border-border/50 bg-card p-6">
         <div className="mb-4 flex items-center gap-2">
           <Video className="h-5 w-5 text-primary" />
-          <h3 className="font-display text-lg font-semibold">
-            Vistoria — Antes e Depois
-          </h3>
+          <h3 className="font-display text-lg font-semibold">Vistoria — Antes e Depois</h3>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <VistoriaCard label="Antes (Entrega)" vistoria={d.vistoriaAntes} />
@@ -565,9 +537,15 @@ function ContractDetailPage() {
                 <TableHeader>
                   <TableRow className="border-border/40 hover:bg-transparent">
                     <TableHead className="text-xs uppercase tracking-wider">Item</TableHead>
-                    <TableHead className="text-right text-xs uppercase tracking-wider">Qtd</TableHead>
-                    <TableHead className="text-right text-xs uppercase tracking-wider">Valor Unit.</TableHead>
-                    <TableHead className="text-right text-xs uppercase tracking-wider">Valor Total</TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider">
+                      Qtd
+                    </TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider">
+                      Valor Unit.
+                    </TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider">
+                      Valor Total
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -626,8 +604,12 @@ function ContractDetailPage() {
                     <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider">Local</TableHead>
                     <TableHead className="text-xs uppercase tracking-wider">Data</TableHead>
-                    <TableHead className="text-right text-xs uppercase tracking-wider">Valor</TableHead>
-                    <TableHead className="text-right text-xs uppercase tracking-wider">AIT</TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider">
+                      Valor
+                    </TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider">
+                      AIT
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -687,7 +669,11 @@ function ContractDetailPage() {
           disabled={aceitando}
           className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-accent px-6 py-4 text-sm font-bold text-primary-foreground shadow-2xl shadow-primary/40 transition-all hover:scale-105 hover:shadow-primary/60 disabled:opacity-50 disabled:hover:scale-100"
         >
-          {aceitando ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+          {aceitando ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5" />
+          )}
           Aceitar Caso
         </button>
       )}

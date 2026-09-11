@@ -4,6 +4,7 @@ import {
   FileText,
   CheckCircle2,
   ShieldAlert,
+  Building2,
   LogOut,
 } from "lucide-react";
 import logoModo from "@/assets/logo_modo.png";
@@ -31,6 +32,7 @@ const items = [
   { title: "Vitrine de casos", url: "/contratos", icon: FileText },
   { title: "Casos finalizados", url: "/finalizados", icon: CheckCircle2 },
   { title: "Casos abandonados", url: "/abandonados", icon: ShieldAlert },
+  { title: "Locadoras", url: "/locadoras", icon: Building2 },
 ];
 
 export function AppSidebar() {
