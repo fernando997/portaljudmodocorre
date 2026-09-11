@@ -221,12 +221,14 @@ async function lerCertificado(pfx: Buffer, senha: string): Promise<DadosCertific
  * nomeada funciona nos dois, então é por aí que carregamos o assinador.
  */
 async function carregarAssinador(): Promise<{
-  sign: (pdf: Buffer, signer: unknown) => Promise<Buffer>;
+  sign: (pdf: Buffer, signer: unknown, signingTime?: Date) => Promise<Buffer>;
 }> {
   const mod = (await import("@signpdf/signpdf")) as unknown as Record<string, unknown>;
   const SignPdfClass = (mod.SignPdf ??
     (mod.default as Record<string, unknown> | undefined)?.SignPdf) as
-    | (new () => { sign: (pdf: Buffer, signer: unknown) => Promise<Buffer> })
+    | (new () => {
+        sign: (pdf: Buffer, signer: unknown, signingTime?: Date) => Promise<Buffer>;
+      })
     | undefined;
 
   if (typeof SignPdfClass !== "function") {
@@ -306,7 +308,7 @@ async function gerarPdf(locadora: DadosProcuracao): Promise<Buffer> {
     const pdf = Buffer.from(await gerarProcuracaoPdf(locadora));
     log("gerar-pdf", {
       bytes: pdf.length,
-      comImagemAssinatura: !!locadora.assinaturaUrl,
+      comSeloIcpBrasil: !!locadora.assinadoEm,
       representante: locadora.representante?.nome ?? null,
     });
     return pdf;
@@ -372,10 +374,16 @@ export const gerarProcuracaoAssinada = createServerFn({ method: "POST" })
       });
     }
 
+    // Um único instante para o selo impresso e para o atributo signingTime do
+    // CMS: o selo afirma por escrito quando o documento foi assinado, então as
+    // duas datas precisam ser a mesma, não "quase a mesma".
+    const assinadoEm = new Date();
+
     const pdfBytes = await gerarPdf({
       ...locadora,
       nomeAssinatura: nomeTitular ?? undefined,
       representante,
+      assinadoEm,
     });
 
     let assinado: Buffer;
@@ -400,11 +408,12 @@ export const gerarProcuracaoAssinada = createServerFn({ method: "POST" })
       // useObjectStreams: false é exigência do signpdf para localizar o ByteRange.
       const comPlaceholder = Buffer.from(await pdfDoc.save({ useObjectStreams: false }));
       const signer = await criarSignerPades(pfxBuffer, certificadoSenha);
-      assinado = await assinador.sign(comPlaceholder, signer);
+      assinado = await assinador.sign(comPlaceholder, signer, assinadoEm);
       log("assinar", {
         bytesAntes: comPlaceholder.length,
         bytesDepois: assinado.length,
         assinadoPor: signer.titular,
+        assinadoEm: assinadoEm.toISOString(),
         perfil: "PAdES-B com signingCertificateV2",
       });
     } catch (e) {

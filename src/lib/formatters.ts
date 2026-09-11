@@ -29,9 +29,71 @@ export function qualificacaoMandante(documento: string): string {
     return `pessoa jurídica de direito privado, inscrita no CNPJ nº ${formatCnpj(d)}`;
   }
   if (d.length >= 9 && d.length <= 11) {
-    return `pessoa física, inscrita no CPF nº ${formatCpf(d)}`;
+    // "inscrito(a)" porque aqui a concordância é com a pessoa, e o cadastro não
+    // guarda o gênero dela. No caso da PJ o "inscrita" concorda com "pessoa
+    // jurídica" e está correto.
+    return `pessoa física, inscrito(a) no CPF nº ${formatCpf(d)}`;
   }
-  return "inscrita sob o nº —";
+  return "inscrito(a) sob o nº —";
+}
+
+/** Tipos de via que o cadastro abrevia sem ponto ("R DOUTOR JULIO PRESTES"). */
+const ABREVIACOES_DE_VIA: Record<string, string> = {
+  R: "Rua",
+  AV: "Avenida",
+  AL: "Alameda",
+  PC: "Praça",
+  ROD: "Rodovia",
+  TV: "Travessa",
+  EST: "Estrada",
+};
+
+export type EnderecoPartes = {
+  logradouro: string;
+  numero: string;
+  bairro: string;
+  complemento: string;
+  cidade: string;
+  estado: string;
+};
+
+/**
+ * Monta o endereço do mandante a partir do cadastro.
+ *
+ * Duas armadilhas do Bubble, ambas confirmadas na base:
+ *
+ * 1. O logradouro **já vem com o tipo de via** nos 74 registros preenchidos, uns
+ *    por extenso ("Rua Antoninho Marmo") e outros abreviados sem ponto ("R
+ *    DOUTOR JULIO PRESTES"). Prefixar "Rua" gerava "Rua Rua Antoninho Marmo".
+ * 2. O complemento repete o número em **48 dos 76** registros, o que produzia
+ *    "…, 621, Vila Nastri, 621, …". Só entra quando acrescenta informação.
+ */
+export function montarEndereco(p: EnderecoPartes): string {
+  const logradouro = expandirTipoDeVia(p.logradouro.trim());
+  const numero = p.numero.trim();
+  const complemento = p.complemento.trim();
+
+  // Um complemento que repete o número, ou que é só pontuação, é ruído.
+  const complementoUtil =
+    complemento &&
+    complemento.toLowerCase() !== numero.toLowerCase() &&
+    /[a-z0-9]/i.test(complemento);
+
+  return [
+    logradouro || "—",
+    numero || "—",
+    p.bairro.trim() || "—",
+    ...(complementoUtil ? [complemento] : []),
+    `${p.cidade.trim() || "—"}/${p.estado.trim() || "—"}`,
+  ].join(", ");
+}
+
+function expandirTipoDeVia(logradouro: string): string {
+  const espaco = logradouro.indexOf(" ");
+  if (espaco <= 0) return logradouro;
+  const primeira = logradouro.slice(0, espaco).replace(/\.$/, "").toUpperCase();
+  const porExtenso = ABREVIACOES_DE_VIA[primeira];
+  return porExtenso ? `${porExtenso} ${logradouro.slice(espaco + 1)}` : logradouro;
 }
 
 /**

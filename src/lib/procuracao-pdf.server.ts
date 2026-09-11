@@ -10,10 +10,12 @@ import {
 import topoDataUri from "@/assets/Topo.png?inline";
 import rodapeDataUri from "@/assets/Rodape.png?inline";
 import marcadaguaDataUri from "@/assets/marcadagua.png?inline";
+import icpBrasilDataUri from "@/assets/icp-brasil.png?inline";
 import {
   clausulaRepresentante,
   dataPorExtenso,
   formatCep,
+  montarEndereco,
   qualificacaoMandante,
   type Representante,
 } from "./formatters";
@@ -30,7 +32,6 @@ export type DadosProcuracao = {
   cidade: string;
   estado: string;
   cep: string;
-  assinaturaUrl: string;
   /**
    * Nome impresso sob a linha de assinatura. Quando o documento é assinado
    * digitalmente, recebe o titular lido do próprio certificado, para bater com
@@ -42,6 +43,16 @@ export type DadosProcuracao = {
    * a cláusula inteira é omitida — ver `clausulaRepresentante`.
    */
   representante?: Representante | null;
+  /**
+   * Momento exato da assinatura criptográfica. Presente **só** quando o PDF vai
+   * ser de fato assinado com o certificado A1 logo em seguida — é o que troca a
+   * linha de assinatura pelo selo ICP-Brasil.
+   *
+   * Precisa ser o mesmo instante gravado no atributo `signingTime` do CMS: o
+   * selo afirma por escrito quando o documento foi assinado, e divergir do
+   * carimbo criptográfico é o tipo de detalhe que um validador atento pega.
+   */
+  assinadoEm?: Date;
 };
 
 // A4 em pontos
@@ -58,17 +69,9 @@ const FONT_SIZE = 10;
 const LINE_HEIGHT = 14;
 const PARAGRAPH_GAP = 10;
 
-// Caixa da imagem de assinatura, em pontos. A linha embaixo tem 240pt, então a
-// assinatura fica um pouco mais estreita que ela. As 56 do cadastro são todas
-// 800x200 (4:1) e renderizam em 220x55.
-const ASSINATURA_MAX_W = 220;
-const ASSINATURA_MAX_H = 70;
-
 /**
- * Encaixa a imagem na caixa sem distorcer, escalando pelo eixo mais apertado.
- *
- * A versão anterior fixava a largura e recortava a altura por `Math.min`, o que
- * esticaria qualquer assinatura fora da proporção 4:1 do cadastro atual.
+ * Encaixa a imagem numa caixa sem distorcer, escalando pelo eixo mais apertado.
+ * A logomarca da ICP-Brasil é alta (2834x3432), então é a altura que manda nela.
  */
 export function enquadrar(
   largura: number,
@@ -81,10 +84,10 @@ export function enquadrar(
   return { largura: largura * escala, altura: altura * escala };
 }
 
-type Run = { text: string; bold?: boolean; italic?: boolean };
-type Word = { text: string; bold: boolean; italic: boolean; width: number };
+export type Run = { text: string; bold?: boolean; italic?: boolean };
+export type Word = { text: string; bold: boolean; italic: boolean; width: number };
 
-type Fontes = {
+export type Fontes = {
   regular: PDFFont;
   bold: PDFFont;
   italic: PDFFont;
@@ -122,15 +125,29 @@ function pickFont(word: { bold: boolean; italic: boolean }, fontes: Fontes): PDF
  * fronteira de palavra (o texto da procuração respeita isso) — um run que
  * termina no meio de uma palavra ganharia um espaço indevido.
  */
-function runsToWords(runs: Run[], fontes: Fontes, size: number): Word[] {
+export function runsToWords(runs: Run[], fontes: Fontes, size: number): Word[] {
   const words: Word[] = [];
   for (const run of runs) {
-    for (const parte of sanitize(run.text).split(/\s+/).filter(Boolean)) {
+    const texto = sanitize(run.text);
+    const partes = texto.split(/\s+/).filter(Boolean);
+
+    // Um run que começa em pontuação continua a última palavra do run anterior.
+    // Os parágrafos põem o nome em negrito num run e a vírgula que o segue no
+    // run seguinte; sem isso saía "MARANATA MULTIMARCAS , pessoa jurídica".
+    const colaNaAnterior = words.length > 0 && /^[,.;:!?)\]}…»”']/.test(texto);
+
+    partes.forEach((parte, i) => {
+      if (i === 0 && colaNaAnterior) {
+        const anterior = words[words.length - 1];
+        anterior.text += parte;
+        anterior.width = pickFont(anterior, fontes).widthOfTextAtSize(anterior.text, size);
+        return;
+      }
       const bold = !!run.bold;
       const italic = !!run.italic;
       const font = pickFont({ bold, italic }, fontes);
       words.push({ text: parte, bold, italic, width: font.widthOfTextAtSize(parte, size) });
-    }
+    });
   }
   return words;
 }
@@ -249,19 +266,122 @@ function escreverCentralizado(ctx: Contexto, texto: string, size: number, font: 
   ctx.y -= size + 6;
 }
 
-async function baixarAssinatura(pdf: PDFDocument, url: string): Promise<PDFImage | null> {
-  if (!url) return null;
-  const absoluta = url.startsWith("//") ? `https:${url}` : url;
-  try {
-    const res = await fetch(absoluta);
-    if (!res.ok) return null;
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    // Detecta o formato pelos bytes mágicos: PNG começa com 0x89 'P' 'N' 'G'.
-    const ehPng = bytes[0] === 0x89 && bytes[1] === 0x50;
-    return ehPng ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
-  } catch {
-    return null;
+/** Linha em branco para assinatura de próprio punho, na versão não assinada. */
+function desenharLinhaDeAssinatura(ctx: Contexto, dados: DadosProcuracao) {
+  garantirEspaco(ctx, 64);
+  ctx.y -= 30;
+
+  const larguraLinha = 240;
+  const xLinha = (PAGE_WIDTH - larguraLinha) / 2;
+  ctx.page.drawLine({
+    start: { x: xLinha, y: ctx.y },
+    end: { x: xLinha + larguraLinha, y: ctx.y },
+    thickness: 0.8,
+    color: rgb(0, 0, 0),
+  });
+  ctx.y -= 14;
+  escreverCentralizado(
+    ctx,
+    dados.nomeAssinatura || dados.nomeSocial || "—",
+    FONT_SIZE,
+    ctx.fontes.bold,
+  );
+}
+
+const SELO_CINZA = rgb(0.45, 0.45, 0.45);
+const SELO_FONT_SIZE = 7;
+const SELO_LINE_HEIGHT = 9;
+const SELO_LOGO_W = 36;
+
+/**
+ * Largura total do selo (logomarca + aviso). Bem menor que a área de texto do
+ * documento: esticado de margem a margem o aviso competia visualmente com as
+ * cláusulas, que são o conteúdo de fato. Encurtar joga o texto para mais linhas
+ * e mantém o bloco compacto, como num carimbo.
+ */
+const SELO_MAX_W = 380;
+
+function dataHoraDoSelo(quando: Date): string {
+  const d = quando.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  const h = quando.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour12: false });
+  return `${d} - ${h}`;
+}
+
+/**
+ * Selo de assinatura digital, no padrão que os documentos assinados via
+ * ICP-Brasil trazem: logomarca à esquerda e, à direita, o aviso de verificação
+ * com quem assinou e quando.
+ *
+ * Só é desenhado quando o PDF vai mesmo ser assinado em seguida — ver
+ * `DadosProcuracao.assinadoEm`. Escrever "assinado digitalmente" num documento
+ * sem assinatura seria declaração falsa, não detalhe de layout.
+ */
+async function desenharSeloIcpBrasil(
+  ctx: Contexto,
+  dados: DadosProcuracao,
+  assinadoEm: Date,
+  endereco: string,
+) {
+  const { fontes } = ctx;
+  const logo = await ctx.pdf.embedPng(dataUriToBytes(icpBrasilDataUri));
+  const dim = enquadrar(logo.width, logo.height, SELO_LOGO_W, SELO_LOGO_W * 1.4);
+
+  const quem = dados.nomeAssinatura || dados.nomeSocial || "—";
+  const aviso =
+    `Importante: Verifique a autenticidade e integridade do documento em: validar.iti.gov.br ` +
+    `Assinado digitalmente conforme ICP-Brasil (MP 2.200-2/2001) por ${quem} em ${dataHoraDoSelo(assinadoEm)}`;
+
+  // Bloco centralizado na página: logomarca à esquerda, aviso na coluna ao lado.
+  const xSelo = (PAGE_WIDTH - SELO_MAX_W) / 2;
+  const xTexto = xSelo + dim.largura + 10;
+  const larguraTexto = xSelo + SELO_MAX_W - xTexto;
+  const palavras = runsToWords([{ text: aviso }], fontes, SELO_FONT_SIZE);
+  const espaco = fontes.regular.widthOfTextAtSize(" ", SELO_FONT_SIZE);
+  const linhas = quebrarEmLinhas(palavras, larguraTexto, espaco);
+
+  const alturaTexto = linhas.length * SELO_LINE_HEIGHT;
+  const alturaCabecalho = Math.max(alturaTexto, dim.altura);
+  garantirEspaco(ctx, alturaCabecalho + 46);
+  ctx.y -= 26;
+
+  const topo = ctx.y;
+  // Centraliza a logomarca verticalmente em relação ao bloco de texto.
+  ctx.page.drawImage(logo, {
+    x: xSelo,
+    y: topo - (alturaCabecalho + dim.altura) / 2,
+    width: dim.largura,
+    height: dim.altura,
+  });
+
+  // Cada linha sai num único `drawText`, com espaços de verdade na string.
+  // Desenhar palavra a palavra posiciona tudo certo na tela, mas a 7pt o vão
+  // entre elas fica em ~1,95pt — abaixo do limiar que os extratores de texto
+  // usam para inferir separação, e o resultado era "validar.iti.gov.brAssinado"
+  // ao copiar o documento. Aqui não há justificação, então nada se perde.
+  let yLinha = topo - SELO_FONT_SIZE;
+  for (const linha of linhas) {
+    ctx.page.drawText(linha.map((p) => p.text).join(" "), {
+      x: xTexto,
+      y: yLinha,
+      size: SELO_FONT_SIZE,
+      font: fontes.regular,
+      color: SELO_CINZA,
+    });
+    yLinha -= SELO_LINE_HEIGHT;
   }
+
+  ctx.y = topo - alturaCabecalho - 12;
+
+  // Identificação de quem assinou, em destaque, e o endereço logo abaixo.
+  const documento = dados.cnpj ? qualificacaoMandante(dados.cnpj).replace(/^[^,]+, /, "") : "";
+  escreverCentralizado(ctx, quem, 9, fontes.bold);
+  if (documento) escreverCentralizado(ctx, documento, 8, fontes.regular);
+  escreverCentralizado(
+    ctx,
+    `${endereco} - CEP ${dados.cep ? formatCep(dados.cep) : "—"}`,
+    8,
+    fontes.regular,
+  );
 }
 
 const TEXTO_MANDATARIO =
@@ -299,13 +419,7 @@ export async function gerarProcuracaoPdf(dados: DadosProcuracao): Promise<Uint8A
   escreverCentralizado(ctx, '"Ad Judicia et Extra"', 11, fontes.italic);
   ctx.y -= 14;
 
-  const endereco = [
-    `Rua ${dados.logradouro || "—"}`,
-    dados.numero || "—",
-    dados.bairro || "—",
-    ...(dados.complemento ? [dados.complemento] : []),
-    `${dados.cidade || "—"}/${dados.estado || "—"}`,
-  ].join(", ");
+  const endereco = montarEndereco(dados);
 
   escreverParagrafo(
     ctx,
@@ -332,47 +446,11 @@ export async function gerarProcuracaoPdf(dados: DadosProcuracao): Promise<Uint8A
   ctx.y -= 10;
   escreverCentralizado(ctx, `Itapetininga/SP, ${dataPorExtenso()}.`, FONT_SIZE, fontes.regular);
 
-  // Bloco de assinatura: imagem (quando houver) apoiada sobre a linha, nome embaixo.
-  const assinatura = await baixarAssinatura(pdf, dados.assinaturaUrl);
-  const img = assinatura
-    ? enquadrar(assinatura.width, assinatura.height, ASSINATURA_MAX_W, ASSINATURA_MAX_H)
-    : null;
-
-  const alturaBloco = (img?.altura ?? 0) + 34;
-  garantirEspaco(ctx, alturaBloco + 30);
-  ctx.y -= 30;
-
-  const larguraLinha = 240;
-  const xLinha = (PAGE_WIDTH - larguraLinha) / 2;
-
-  if (assinatura && img) {
-    // `drawImage` posiciona pela base, então o cursor desce a altura da imagem
-    // antes de desenhar — assim ela ocupa o espaço logo acima da linha. Descer
-    // depois de desenhar deixaria a linha uma altura de imagem mais abaixo, que
-    // era a origem do vão entre a assinatura e a linha.
-    ctx.y -= img.altura;
-    ctx.page.drawImage(assinatura, {
-      x: (PAGE_WIDTH - img.largura) / 2,
-      y: ctx.y,
-      width: img.largura,
-      height: img.altura,
-    });
-    ctx.y -= 4;
+  if (dados.assinadoEm) {
+    await desenharSeloIcpBrasil(ctx, dados, dados.assinadoEm, endereco);
+  } else {
+    desenharLinhaDeAssinatura(ctx, dados);
   }
-
-  ctx.page.drawLine({
-    start: { x: xLinha, y: ctx.y },
-    end: { x: xLinha + larguraLinha, y: ctx.y },
-    thickness: 0.8,
-    color: rgb(0, 0, 0),
-  });
-  ctx.y -= 14;
-  escreverCentralizado(
-    ctx,
-    dados.nomeAssinatura || dados.nomeSocial || "—",
-    FONT_SIZE,
-    fontes.bold,
-  );
 
   return await pdf.save({ useObjectStreams: false });
 }

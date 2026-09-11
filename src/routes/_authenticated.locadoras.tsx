@@ -17,6 +17,7 @@ import {
   clausulaRepresentante,
   formatCep,
   formatCnpj,
+  montarEndereco,
   qualificacaoMandante,
   dataPorExtenso,
 } from "@/lib/formatters";
@@ -338,8 +339,7 @@ function LocadoraCard({
             <span className="font-semibold text-primary">Outorgante(s):</span>{" "}
             <span className="font-semibold">{l.nomeSocial || "—"}</span>, CNPJ{" "}
             <span className="font-mono text-xs">{l.cnpj ? formatCnpj(l.cnpj) : "—"}</span>, com sede
-            na Rua {l.logradouro || "—"}, {l.numero || "—"}, {l.bairro || "—"}, {l.cidade || "—"}/
-            {l.estado || "—"}.
+            na {montarEndereco(l)}.
           </p>
         </div>
 
@@ -416,9 +416,7 @@ function ProcuracaoDocumento({ l }: { l: Locadora }) {
           <p>
             <span className="font-bold">Mandante:</span>{" "}
             <span className="font-bold">{l.nomeSocial || "—"}</span>, {qualificacaoMandante(l.cnpj)}
-            , com estabelecimento Rua {l.logradouro || "—"}, {l.numero || "—"}, {l.bairro || "—"}
-            {l.complemento ? `, ${l.complemento}` : ""}, {l.cidade || "—"}/{l.estado || "—"}, CEP nº{" "}
-            {l.cep ? formatCep(l.cep) : "—"}
+            , com estabelecimento {montarEndereco(l)}, CEP nº {l.cep ? formatCep(l.cep) : "—"}
             {clausulaRepresentante(l.representanteNome ? { nome: l.representanteNome } : null)}
           </p>
 

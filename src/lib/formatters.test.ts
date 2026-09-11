@@ -3,6 +3,7 @@ import {
   clausulaRepresentante,
   formatCnpj,
   formatCpf,
+  montarEndereco,
   nomePlausivel,
   qualificacaoMandante,
 } from "./formatters";
@@ -20,6 +21,62 @@ describe("formatCnpj", () => {
   });
 });
 
+describe("montarEndereco", () => {
+  const base = {
+    logradouro: "Rua Izolina de Moraes Rosa",
+    numero: "621",
+    bairro: "Vila Nastri",
+    complemento: "",
+    cidade: "Itapetininga",
+    estado: "SP",
+  };
+
+  it("não prefixa tipo de via, porque o cadastro já traz", () => {
+    // Regressão: saía "Rua Rua Izolina de Moraes Rosa".
+    const r = montarEndereco(base);
+    expect(r).toBe("Rua Izolina de Moraes Rosa, 621, Vila Nastri, Itapetininga/SP");
+    expect(r).not.toContain("Rua Rua");
+  });
+
+  it("expande a abreviação de via usada no cadastro", () => {
+    // 22 registros vêm como "R DOUTOR JULIO PRESTES".
+    expect(montarEndereco({ ...base, logradouro: "R DOUTOR JULIO PRESTES" })).toContain(
+      "Rua DOUTOR JULIO PRESTES",
+    );
+    expect(montarEndereco({ ...base, logradouro: "AV. BRASIL" })).toContain("Avenida BRASIL");
+  });
+
+  it("descarta complemento que só repete o número", () => {
+    // 48 das 76 locadoras têm complemento idêntico ao número.
+    const r = montarEndereco({ ...base, complemento: "621" });
+    expect(r).toBe("Rua Izolina de Moraes Rosa, 621, Vila Nastri, Itapetininga/SP");
+    expect(r.match(/621/g)).toHaveLength(1);
+  });
+
+  it("descarta complemento que é só pontuação", () => {
+    expect(montarEndereco({ ...base, complemento: "." })).not.toContain(".,");
+  });
+
+  it("mantém complemento que acrescenta informação", () => {
+    expect(montarEndereco({ ...base, complemento: "Sala 4" })).toBe(
+      "Rua Izolina de Moraes Rosa, 621, Vila Nastri, Sala 4, Itapetininga/SP",
+    );
+  });
+
+  it("não quebra com campos vazios", () => {
+    expect(
+      montarEndereco({
+        logradouro: "",
+        numero: "",
+        bairro: "",
+        complemento: "",
+        cidade: "",
+        estado: "",
+      }),
+    ).toBe("—, —, —, —/—");
+  });
+});
+
 describe("qualificacaoMandante", () => {
   it("trata 14 dígitos como pessoa jurídica", () => {
     expect(qualificacaoMandante("54880289000100")).toBe(
@@ -34,13 +91,13 @@ describe("qualificacaoMandante", () => {
   it("trata 11 dígitos como pessoa física, não como CNPJ", () => {
     // 11 das 76 locadoras são PF e guardam o CPF no campo chamado "cnpj".
     expect(qualificacaoMandante("12175786846")).toBe(
-      "pessoa física, inscrita no CPF nº 121.757.868-46",
+      "pessoa física, inscrito(a) no CPF nº 121.757.868-46",
     );
   });
 
   it("repõe zero à esquerda também no CPF", () => {
     expect(qualificacaoMandante("4805471140")).toBe(
-      "pessoa física, inscrita no CPF nº 048.054.711-40",
+      "pessoa física, inscrito(a) no CPF nº 048.054.711-40",
     );
   });
 
@@ -53,7 +110,7 @@ describe("qualificacaoMandante", () => {
   });
 
   it("não inventa qualificação quando o campo está vazio", () => {
-    expect(qualificacaoMandante("")).toBe("inscrita sob o nº —");
+    expect(qualificacaoMandante("")).toBe("inscrito(a) sob o nº —");
   });
 });
 

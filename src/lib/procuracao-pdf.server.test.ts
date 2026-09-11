@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import {
   enquadrar,
   gerarProcuracaoPdf,
+  runsToWords,
   sanitize,
   type DadosProcuracao,
 } from "./procuracao-pdf.server";
@@ -56,8 +57,6 @@ const base: DadosProcuracao = {
   cidade: "São José do Rio Preto",
   estado: "SP",
   cep: "15044050",
-  // Vazio de propósito: o teste não deve depender de rede.
-  assinaturaUrl: "",
 };
 
 describe("sanitize", () => {
@@ -73,6 +72,53 @@ describe("sanitize", () => {
 
   it("remove caracteres fora do Latin-1", () => {
     expect(sanitize("emoji 🚗 fim")).toBe("emoji  fim");
+  });
+});
+
+describe("runsToWords", () => {
+  async function fontes() {
+    const pdf = await PDFDocument.create();
+    return {
+      regular: await pdf.embedFont(StandardFonts.Helvetica),
+      bold: await pdf.embedFont(StandardFonts.HelveticaBold),
+      italic: await pdf.embedFont(StandardFonts.HelveticaOblique),
+    };
+  }
+
+  it("cola a pontuação na palavra anterior", async () => {
+    // Regressão: o nome ia num run em negrito e a vírgula no run seguinte, o
+    // que imprimia "MARANATA MULTIMARCAS , pessoa jurídica".
+    const w = runsToWords(
+      [{ text: "MARANATA MULTIMARCAS", bold: true }, { text: ", pessoa jurídica" }],
+      await fontes(),
+      10,
+    );
+    expect(w.map((x) => x.text)).toEqual(["MARANATA", "MULTIMARCAS,", "pessoa", "jurídica"]);
+  });
+
+  it("não cola runs que começam em letra", async () => {
+    // "Mandante:" e o nome são runs separados e precisam continuar separados.
+    const w = runsToWords(
+      [
+        { text: "Mandante:", bold: true },
+        { text: "MARANATA", bold: true },
+      ],
+      await fontes(),
+      10,
+    );
+    expect(w.map((x) => x.text)).toEqual(["Mandante:", "MARANATA"]);
+  });
+
+  it("remede a palavra depois de colar a pontuação", async () => {
+    const f = await fontes();
+    const w = runsToWords([{ text: "NOME", bold: true }, { text: ", resto" }], f, 10);
+    expect(w[0].text).toBe("NOME,");
+    expect(w[0].width).toBeCloseTo(f.bold.widthOfTextAtSize("NOME,", 10), 5);
+  });
+
+  it("não cola quando não há palavra anterior", async () => {
+    const w = runsToWords([{ text: ", solto" }], await fontes(), 10);
+    expect(w.map((x) => x.text)).toEqual([",", "solto"]);
   });
 });
 
@@ -103,6 +149,26 @@ describe("gerarProcuracaoPdf", () => {
       cep: "",
     });
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
+  });
+
+  it("só embute a logomarca da ICP-Brasil quando o documento é assinado", async () => {
+    // O selo declara por escrito "assinado digitalmente ... em tal data". Num
+    // PDF que não vai ser assinado isso seria afirmação falsa, então a ausência
+    // de `assinadoEm` tem que deixar o selo inteiro de fora.
+    const contarImagens = (b: Uint8Array) =>
+      (new TextDecoder("latin1").decode(b).match(/\/Subtype\s*\/Image/g) ?? []).length;
+
+    const semSelo = await gerarProcuracaoPdf(base);
+    const comSelo = await gerarProcuracaoPdf({ ...base, assinadoEm: new Date() });
+
+    expect(contarImagens(comSelo)).toBeGreaterThan(contarImagens(semSelo));
+    expect(comSelo.length).toBeGreaterThan(semSelo.length);
+  });
+
+  it("mantém uma página só com o selo aplicado", async () => {
+    const bytes = await gerarProcuracaoPdf({ ...base, assinadoEm: new Date() });
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getPageCount()).toBe(1);
   });
 
   it("aceita CNPJ e CEP já formatados ou crus", async () => {
