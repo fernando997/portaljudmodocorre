@@ -11,7 +11,7 @@ import {
   AlertDialogContent,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
-import { getLocadoras, type Locadora } from "@/lib/locadoras.functions";
+import { certificadoValido, getLocadoras, type Locadora } from "@/lib/locadoras.functions";
 import { gerarProcuracaoAssinada, gerarProcuracaoSemAssinatura } from "@/lib/procuracao.functions";
 import {
   clausulaRepresentante,
@@ -93,13 +93,15 @@ export const Route = createFileRoute("/_authenticated/locadoras")({
   component: LocadorasPage,
 });
 
-/** Devolve o motivo pelo qual não dá para assinar, ou null quando está tudo ok. */
+/**
+ * Devolve o motivo pelo qual não dá para assinar, ou null quando está tudo ok.
+ * A decisão em si é a `certificadoValido` compartilhada com a vitrine; aqui só
+ * se escolhe a mensagem.
+ */
 function motivoBloqueio(l: Locadora): string | null {
+  if (certificadoValido(l)) return null;
   if (!l.temCertificado) return "Sem certificado digital cadastrado";
-  if (l.certificadoVencimento && l.certificadoVencimento < Date.now()) {
-    return `Certificado vencido em ${new Date(l.certificadoVencimento).toLocaleDateString("pt-BR")}`;
-  }
-  return null;
+  return `Certificado vencido em ${new Date(l.certificadoVencimento!).toLocaleDateString("pt-BR")}`;
 }
 
 function LocadorasPage() {

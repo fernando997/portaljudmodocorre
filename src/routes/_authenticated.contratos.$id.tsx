@@ -222,7 +222,10 @@ function ContractDetailPage() {
           onClick={() =>
             router.history.canGoBack()
               ? router.history.back()
-              : router.navigate({ to: "/contratos", search: { page: 0, q: "", tab: "JUD" } })
+              : router.navigate({
+                  to: "/contratos",
+                  search: { page: 0, q: "", tab: "JUD", proc: "todos" },
+                })
           }
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/50 bg-card text-muted-foreground transition-colors hover:text-foreground"
         >

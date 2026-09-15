@@ -101,4 +101,58 @@ describe("normalize", () => {
     const c = normalize({ _id: "ctr-2", cliente: "Cliente Avulso" }, 1, customers, fechamentos);
     expect(c.clienteNome).toBe("Cliente Avulso");
   });
+
+  describe("locadora", () => {
+    // O get_contratos devolve a locadora numa lista paralela (contrato →
+    // placa → locadora), que o handler já resolve por _id do contrato antes
+    // de chamar normalize — aqui ela chega como o 5º parâmetro.
+    it("extrai id e nome do objeto de locadora", () => {
+      const c = normalize({ _id: "ctr-3" }, 0, customers, fechamentos, {
+        _id: "loc-1",
+        nome: "MOP MOTOS LOCAÇÕES",
+      });
+      expect(c.locadoraId).toBe("loc-1");
+      expect(c.locadoraNome).toBe("MOP MOTOS LOCAÇÕES");
+    });
+
+    it("marca certificado válido com certificado presente e vencimento futuro", () => {
+      const c = normalize({ _id: "ctr-4" }, 0, customers, fechamentos, {
+        _id: "loc-2",
+        nome: "X",
+        certificado: "//cdn/f.pfx",
+        certificado_senha: "s3nha",
+        certificado_vencimento: Date.now() + 86_400_000,
+      });
+      expect(c.locadoraCertificadoValido).toBe(true);
+    });
+
+    it("marca certificado inválido quando vencido", () => {
+      const c = normalize({ _id: "ctr-5" }, 0, customers, fechamentos, {
+        _id: "loc-3",
+        nome: "X",
+        certificado: "//cdn/f.pfx",
+        certificado_senha: "s3nha",
+        certificado_vencimento: Date.now() - 86_400_000,
+      });
+      expect(c.locadoraCertificadoValido).toBe(false);
+    });
+
+    it("marca certificado inválido quando falta o arquivo ou a senha", () => {
+      const c = normalize({ _id: "ctr-6" }, 0, customers, fechamentos, {
+        _id: "loc-4",
+        nome: "X",
+        certificado_vencimento: Date.now() + 86_400_000,
+      });
+      expect(c.locadoraCertificadoValido).toBe(false);
+    });
+
+    it("sem locadora resolvida (contrato sem placa, ou fora da amostra), deixa tudo vazio", () => {
+      // Acontece quando a placa do contrato não tem locadora vinculada — o
+      // contrato cai em "Sem procuração" e nada quebra.
+      const c = normalize({ _id: "ctr-7" }, 0, customers, fechamentos, undefined);
+      expect(c.locadoraId).toBe("");
+      expect(c.locadoraNome).toBe("");
+      expect(c.locadoraCertificadoValido).toBe(false);
+    });
+  });
 });

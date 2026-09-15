@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import { certificadoValido } from "./locadoras.functions";
+
 export type Contract = {
   id: string;
   nrContrato: string;
@@ -17,6 +19,17 @@ export type Contract = {
   inicio?: number;
   fim?: number;
   status: "ativo" | "bloqueado" | "encerrado";
+  /** Id da locadora dona do contrato, resolvida via contrato → placa → locadora. */
+  locadoraId: string;
+  locadoraNome: string;
+  /**
+   * A locadora consegue assinar uma procuração hoje: tem certificado A1
+   * cadastrado e ele não venceu. Alimenta o filtro "Com procuração assinada /
+   * Sem procuração" da vitrine. Só o booleano viaja até o browser — o
+   * certificado em si nunca sai do servidor, mesmo vindo embutido no registro
+   * bruto da locadora (ver `normalize`).
+   */
+  locadoraCertificadoValido: boolean;
 };
 
 export type CustomerInfo = {
@@ -43,7 +56,13 @@ export function formatPhone(raw: string): string {
 
 const BUBBLE_ID_RE = /^\d+x\d+$/;
 
-export function normalize(raw: any, idx: number, customers: Map<string, CustomerInfo>, fechamentos: Map<string, number>): Contract {
+export function normalize(
+  raw: any,
+  idx: number,
+  customers: Map<string, CustomerInfo>,
+  fechamentos: Map<string, number>,
+  locadoraRaw?: Record<string, unknown>,
+): Contract {
   const bloqueio = String(raw["bloqueio"] ?? "").trim();
   const aditivo = String(raw["Aditivo"] ?? raw["aditivo"] ?? "").trim();
   const statusBubble = String(raw["status"] ?? "").trim();
@@ -76,6 +95,31 @@ export function normalize(raw: any, idx: number, customers: Map<string, Customer
     inicio: raw["inicio"],
     fim: raw["fim"],
     status: bloqueio ? "bloqueado" : aditivo ? "encerrado" : "ativo",
+    ...locadoraDe(locadoraRaw),
+  };
+}
+
+/**
+ * O get_contratos devolve a locadora embutida (contrato → placa → locadora),
+ * na mesma lista paralela que já traz `customer`/`fiador`/`fechamento`. O
+ * registro cru carrega `certificado`/`certificado_senha` — por isso só o
+ * necessário é extraído aqui, e o objeto bruto nunca é devolvido ao browser.
+ */
+function locadoraDe(
+  raw: Record<string, unknown> | undefined,
+): Pick<Contract, "locadoraId" | "locadoraNome" | "locadoraCertificadoValido"> {
+  if (!raw) return { locadoraId: "", locadoraNome: "", locadoraCertificadoValido: false };
+  return {
+    locadoraId: String(raw["_id"] ?? "").trim(),
+    locadoraNome: String(raw["nome"] ?? "").trim(),
+    locadoraCertificadoValido: certificadoValido({
+      temCertificado:
+        !!String(raw["certificado"] ?? "") && !!String(raw["certificado_senha"] ?? ""),
+      certificadoVencimento:
+        typeof raw["certificado_vencimento"] === "number"
+          ? (raw["certificado_vencimento"] as number)
+          : null,
+    }),
   };
 }
 
@@ -89,9 +133,9 @@ const MOCK: any[] = Array.from({ length: 28 }).map((_, i) => {
     _id: `mock-${i}`,
     cliente: `Cliente ${1000 + i}`,
     "agente operador": i % 3 === 0 ? "" : "Operador A",
-    "caução": "1756664876582x563251611730968600",
+    caução: "1756664876582x563251611730968600",
     combustivel: i % 2 === 0 ? "R" : "G",
-    comissao1pgt: (80 + (i * 7.31) % 80).toFixed(4).replace(".", ","),
+    comissao1pgt: (80 + ((i * 7.31) % 80)).toFixed(4).replace(".", ","),
     Aditivo: ended ? "Sim" : "",
     bloqueio: blocked ? "Sim" : "",
     "Created Date": `2024-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T10:00:00Z`,
@@ -115,6 +159,10 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
   let rawCasos: any[] = [];
   let customers = new Map<string, CustomerInfo>();
   let fechamentos = new Map<string, number>();
+  // Locadora vem numa lista paralela a `contratos`, alinhada por posição
+  // dentro da mesma página — por isso é pareada aqui, não pelo _id da
+  // locadora (que a gente só conhece depois de já ter o objeto em mãos).
+  const locadorasPorContratoId = new Map<string, Record<string, unknown>>();
   let seenFechamentos = new Set<string>();
   let seenCasos = new Set<string>();
   let source: "bubble" | "mock" = "mock";
@@ -159,8 +207,15 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
         const pageCustomers: any[] = data.customer ?? [];
         const pageFiadores: any[] = data.fiador ?? [];
         const pageFechamentos: any[] = data.fechamento ?? [];
+        const pageLocadoras: unknown[] = data.locadora ?? [];
 
         raw.push(...pageContracts);
+
+        pageContracts.forEach((c, i) => {
+          const l = pageLocadoras[i] as Record<string, unknown> | undefined;
+          const contratoId = String(c["_id"] ?? "");
+          if (contratoId && l) locadorasPorContratoId.set(contratoId, l);
+        });
 
         for (const c of pageCustomers) {
           const id = String(c["_id"] ?? "");
@@ -209,9 +264,8 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
         }
 
         offset += pageContracts.length;
-        hasMore = totalFromBubble > 0
-          ? raw.length < totalFromBubble
-          : pageContracts.length >= PAGE_SIZE;
+        hasMore =
+          totalFromBubble > 0 ? raw.length < totalFromBubble : pageContracts.length >= PAGE_SIZE;
       }
 
       source = "bubble";
@@ -220,7 +274,12 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
       throw e;
     }
   } else {
-    console.error("[MOCK FALLBACK] Env vars ausentes — baseUrl:", baseUrl, "platformToken:", !!platformToken);
+    console.error(
+      "[MOCK FALLBACK] Env vars ausentes — baseUrl:",
+      baseUrl,
+      "platformToken:",
+      !!platformToken,
+    );
     raw = MOCK;
   }
 
@@ -231,7 +290,9 @@ export const getContracts = createServerFn({ method: "GET" }).handler(async () =
     seen.add(id);
     return true;
   });
-  const contracts = deduped.map((r, i) => normalize(r, i, customers, fechamentos));
+  const contracts = deduped.map((r, i) =>
+    normalize(r, i, customers, fechamentos, locadorasPorContratoId.get(String(r["_id"] ?? ""))),
+  );
 
   const total = contracts.length;
   const ativos = contracts.filter((c) => c.status === "ativo").length;

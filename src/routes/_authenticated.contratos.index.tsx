@@ -12,6 +12,8 @@ import {
   User,
   Shield,
   FileText,
+  FileSignature,
+  Building2,
   CheckCircle2,
   Gavel,
   Handshake,
@@ -47,7 +49,28 @@ const contratosSearchSchema = z.object({
   page: z.number().int().min(0).catch(0),
   q: z.string().catch(""),
   tab: z.enum(["JUD", "SAP"]).catch("JUD"),
+  proc: z.enum(["todos", "com", "sem"]).catch("todos"),
 });
+
+type FiltroProcuracao = z.infer<typeof contratosSearchSchema>["proc"];
+
+/**
+ * "Com procuração assinada" quer dizer que a locadora do contrato consegue
+ * assinar uma hoje — tem certificado A1 cadastrado e ele não venceu. "Sem
+ * procuração" é o complemento: sem certificado, ou vencido. A regra em si é
+ * calculada no servidor (ver `locadoraCertificadoValido`), aqui só se filtra.
+ */
+const FILTROS_PROCURACAO: { valor: FiltroProcuracao; rotulo: string }[] = [
+  { valor: "todos", rotulo: "Todos" },
+  { valor: "com", rotulo: "Com procuração assinada" },
+  { valor: "sem", rotulo: "Sem procuração" },
+];
+
+function passaNoFiltroProcuracao(c: Contract, filtro: FiltroProcuracao): boolean {
+  if (filtro === "com") return c.locadoraCertificadoValido;
+  if (filtro === "sem") return !c.locadoraCertificadoValido;
+  return true;
+}
 
 export const Route = createFileRoute("/_authenticated/contratos/")({
   head: () => ({
@@ -118,10 +141,12 @@ const PER_PAGE = 30;
 function ContratosPage() {
   const { data } = useSuspenseQuery(contractsQuery);
   const navigate = useNavigate();
-  const { page, q, tab: activeTab } = Route.useSearch();
+  const { page, q, tab: activeTab, proc } = Route.useSearch();
   const [view, setView] = useState<ViewMode>("cards");
 
-  function setSearch(patch: Partial<{ page: number; q: string; tab: "JUD" | "SAP" }>) {
+  function setSearch(
+    patch: Partial<{ page: number; q: string; tab: "JUD" | "SAP"; proc: FiltroProcuracao }>,
+  ) {
     navigate({
       to: ".",
       search: (prev) => ({ ...prev, ...patch }),
@@ -160,6 +185,7 @@ function ContratosPage() {
     .filter(
       (c) => (activeTab === "SAP" ? c.statusContrato === "SAP" : c.statusContrato !== "SAP"), // JUD = tudo que não é SAP (catch-all)
     )
+    .filter((c) => passaNoFiltroProcuracao(c, proc))
     .filter((c) => {
       const term = q.toLowerCase();
       return (
@@ -168,6 +194,7 @@ function ContratosPage() {
         c.clienteCelular.toLowerCase().includes(term) ||
         c.nrContrato.toLowerCase().includes(term) ||
         c.fiadorNome.toLowerCase().includes(term) ||
+        c.locadoraNome.toLowerCase().includes(term) ||
         c.id.toLowerCase().includes(term)
       );
     })
@@ -221,6 +248,29 @@ function ContratosPage() {
           {activeTab === "JUD"
             ? "Estes casos estão em estado JUDICIÁRIO no nosso sistema pois os clientes não se manifestaram ou estão dificultando um acordo."
             : "Estes casos estão em estado de tentativa de negociação — damos um prazo de 15 dias para um acordo com os clientes listados nesta aba."}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Procuração:</span>
+          {FILTROS_PROCURACAO.map((f) => {
+            const ativo = proc === f.valor;
+            return (
+              <button
+                key={f.valor}
+                onClick={() => setSearch({ proc: f.valor, page: 0 })}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all ${
+                  ativo && f.valor === "sem"
+                    ? "border border-destructive/50 bg-destructive/15 text-destructive"
+                    : ativo
+                      ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-sm shadow-primary/25"
+                      : "border border-border/50 bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                }`}
+              >
+                {f.valor === "com" && <FileSignature className="h-3.5 w-3.5" />}
+                {f.rotulo}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -289,6 +339,7 @@ function ContratosPage() {
                 <TableHead className="text-xs uppercase tracking-wider">Nº</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider">Cliente</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider">Fiador</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider">Locadora</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider">Telefone</TableHead>
                 <TableHead className="text-right text-xs uppercase tracking-wider">Valor</TableHead>
                 <TableHead className="text-right text-xs uppercase tracking-wider"></TableHead>
@@ -312,6 +363,20 @@ function ContratosPage() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {c.fiadorNome || "—"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      {c.locadoraNome && (
+                        <Building2
+                          className={`h-3 w-3 shrink-0 ${
+                            c.locadoraCertificadoValido
+                              ? "text-emerald-500"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      )}
+                      <span className="truncate">{c.locadoraNome || "—"}</span>
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {c.clienteCelular || "—"}
@@ -426,6 +491,16 @@ function ContractCard({
                 <span className="truncate text-xs text-muted-foreground">
                   Fiador: {c.fiadorNome}
                 </span>
+              </div>
+            )}
+            {c.locadoraNome && (
+              <div className="mt-1 flex items-center gap-2">
+                <Building2
+                  className={`h-3 w-3 shrink-0 ${
+                    c.locadoraCertificadoValido ? "text-emerald-500" : "text-muted-foreground"
+                  }`}
+                />
+                <span className="truncate text-xs text-muted-foreground">{c.locadoraNome}</span>
               </div>
             )}
           </div>

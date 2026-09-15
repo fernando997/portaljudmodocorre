@@ -27,6 +27,20 @@ export type Locadora = {
 };
 
 /**
+ * Regra única de "esta locadora consegue assinar hoje": tem certificado
+ * cadastrado e ele não venceu. É usada pelo card em /locadoras (para bloquear
+ * o botão) e pela vitrine (para o filtro de procuração) — se as duas telas
+ * calculassem por conta própria, uma hora divergiriam.
+ */
+export function certificadoValido(l: {
+  temCertificado: boolean;
+  certificadoVencimento: number | null;
+}): boolean {
+  if (!l.temCertificado) return false;
+  return !(l.certificadoVencimento && l.certificadoVencimento < Date.now());
+}
+
+/**
  * Locadora + dados sensíveis do certificado digital. NUNCA pode sair do
  * servidor — a URL do .pfx é pública no CDN do Bubble e a senha vem em texto
  * puro, então quem tiver os dois consegue assinar como a empresa.
@@ -77,7 +91,7 @@ type PaginaBruta = { locadoras: RegistroBruto[]; total: number };
  * Busca uma página crua no Bubble. Server-only: o retorno inclui os campos de
  * certificado, que não podem trafegar até o browser.
  */
-async function fetchLocadorasRaw(
+export async function fetchLocadorasRaw(
   offset: number,
   limit: number,
   busca: string,
